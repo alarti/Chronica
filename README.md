@@ -49,7 +49,7 @@ Copy `.env.example` to `.env` and set:
 - `APP_DEFAULT_LANG` (e.g., `en`)
 
 ## 🚀 Getting Started
-git clone https://github.com/youruser/chronica.git
+git clone https://github.com/alarti/chronica.git
 cd chronica
 npm install
 npm run dev
