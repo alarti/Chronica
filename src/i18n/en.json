@@ -1,0 +1,15 @@
+{
+  "scene": {
+    "story": "You awaken in a dimly lit chamber, the air thick with the smell of dust and old stone. A single torch flickers on a nearby wall, casting long shadows that dance like phantoms. You don't remember how you got here. Three paths lie before you: a heavy oak door, a narrow stone staircase leading down, and a small, dark crevice in the wall.",
+    "options": [
+      "Try to open the heavy oak door.",
+      "Descend the narrow stone staircase.",
+      "Investigate the dark crevice."
+    ],
+    "imagePrompt": "A mysterious, torch-lit stone chamber with a single flickering torch on the wall, revealing three potential paths: a large wooden door, a dark staircase, and a narrow crack in the wall.",
+    "ui": {
+      "title": "The Awakening",
+      "toast": "Your story begins."
+    }
+  }
+}

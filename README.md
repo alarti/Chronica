@@ -39,27 +39,11 @@ Created by **Alberto Arce**.
 - i18n: JSON resource bundles + small runtime i18n helper
 
 
-## 🔧 Environment Variables
-Copy `.env.example` to `.env` and set:
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
-- `GOOGLE_CLIENT_ID`
-- `POLLINATIONS_API_URL` (base for text)
-- `POLLINATIONS_IMAGE_URL` (base for images)
-- `APP_DEFAULT_LANG` (e.g., `en`)
-
 ## 🚀 Getting Started
 git clone https://github.com/youruser/chronica.git
 cd chronica
 npm install
 npm run dev
-
-## 🧪 Data Model (Supabase)
-- `profiles`: id (uuid), email, display_name, lang
-- `sessions`: id, user_id, created_at, last_state (jsonb)
-- `events`: id, session_id, turn, choice, state_delta (jsonb), created_at
-
-RLS suggestion: users can only read/write rows where `user_id = auth.uid()`.
 
 ## 🔌 API Integration (Pollinations)
 - Text generation: build a POST with the narrative prompt contract; expect strict JSON back (validate and retry if needed).

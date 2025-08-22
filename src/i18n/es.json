@@ -1,0 +1,15 @@
+{
+"scene": {
+"story": "Despiertas en una cámara tenuemente iluminada, el aire denso con olor a polvo y piedra antigua. Una sola antorcha parpadea en una pared cercana, proyectando largas sombras que danzan como fantasmas. No recuerdas cómo llegaste aquí. Tres caminos se abren ante ti: una pesada puerta de roble, una estrecha escalera de piedra que desciende y una pequeña y oscura grieta en la pared.",
+"options": [
+"Intentar abrir la pesada puerta de roble.",
+"Descender por la estrecha escalera de piedra.",
+"Investigar la grieta oscura."
+],
+"imagePrompt": "Una misteriosa cámara de piedra iluminada por una antorcha parpadeante en la pared, que revela tres posibles caminos: una gran puerta de madera, una escalera oscura y una estrecha grieta en la pared.",
+"ui": {
+"title": "El Despertar",
+"toast": "Tu historia comienza."
+}
+}
+}

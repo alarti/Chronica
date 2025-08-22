@@ -1,0 +1,22 @@
+{
+  "name": "chronica-infinite-stories",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A multilingual, AI-driven narrative web RPG.",
+  "main": "src/main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "serve": "vite preview",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.33.0",
+    "eslint": "^9.33.0",
+    "globals": "^15.15.0",
+    "vite": "^5.0.0"
+  },
+  "author": "Alberto Arce",
+  "license": "UNLICENSED"
+}
