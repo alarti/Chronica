@@ -48,9 +48,8 @@ function showRiddleFeedback(isCorrect) {
     if (!feedbackDiv) return;
 
     feedbackDiv.textContent = isCorrect ? 'Superado' : 'Fallo';
-    feedbackDiv.className = isCorrect ? 'success' : 'failure';
-
-    feedbackDiv.classList.remove('hidden');
+    feedbackDiv.classList.remove('success', 'failure', 'hidden');
+    feedbackDiv.classList.add(isCorrect ? 'success' : 'failure');
 
     setTimeout(() => {
         feedbackDiv.classList.add('hidden');
