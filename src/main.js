@@ -235,6 +235,16 @@ async function startGame(storyId, lang) {
   document.getElementById('app').style.display = 'flex';
   document.getElementById('language-selector').classList.add('hidden');
 
+  // Set up side panel listener now that the game is starting
+  const menuButton = document.getElementById('menu-button');
+  const sidePanel = document.getElementById('side-panel');
+  if(menuButton && sidePanel) {
+    menuButton.onclick = () => { // Use onclick to avoid multiple listeners if startGame is called again
+      renderSidePanel();
+      sidePanel.classList.toggle('visible');
+    };
+  }
+
   gameState = {
     lang: lang,
     playerProfile: { name: 'Player', lang: lang },
@@ -295,6 +305,7 @@ async function handleNewStory(lang) {
     const title = input.value;
     if (title.trim()) {
       dialog.classList.add('hidden');
+      document.getElementById('start-screen').classList.add('hidden');
       currentStoryId = await createNewStory(title);
       startGame(currentStoryId, lang);
     }
@@ -314,6 +325,7 @@ async function handleLoadStory(lang) {
       li.textContent = `${story.title} (Last played: ${new Date(story.last_played).toLocaleString()})`;
       li.dataset.id = story.id;
       li.addEventListener('click', () => {
+        document.getElementById('start-screen').classList.add('hidden');
         startGame(story.id, lang);
       });
       list.appendChild(li);
@@ -336,15 +348,6 @@ async function main() {
     });
   });
 
-  // Side Panel Logic
-  const menuButton = document.getElementById('menu-button');
-  const sidePanel = document.getElementById('side-panel');
-  if(menuButton && sidePanel) {
-    menuButton.addEventListener('click', () => {
-      renderSidePanel();
-      sidePanel.classList.toggle('visible');
-    });
-  }
 }
 
 main();
