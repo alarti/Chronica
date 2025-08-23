@@ -2,7 +2,7 @@
   "name": "Chronica: Infinite Stories",
   "short_name": "Chronica",
   "description": "An AI-driven narrative web RPG with infinite possibilities.",
-  "start_url": "/",
+  "start_url": "index.html",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#ffffff",
