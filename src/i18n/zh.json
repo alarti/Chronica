@@ -11,5 +11,12 @@
       "title": "觉醒",
       "toast": "你的故事开始了。"
     }
+  },
+  "start_screen": {
+    "title": "Chronica: 无尽的故事",
+    "new_story": "开始新故事",
+    "load_story": "加载故事",
+    "saved_stories": "已保存的故事",
+    "no_saved_stories": "未找到已保存的故事。"
   }
 }

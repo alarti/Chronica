@@ -147,9 +147,9 @@ function renderScene(scene) {
         const isRisky = event.target.dataset.isRisky === 'true';
 
         if (isRisky) {
-          handleRiskyChoice(selectedOptionText, scene.stateDelta);
+          handleRiskyChoice(selectedOptionText, scene.stateDelta, scene.story);
         } else {
-          advanceToNextScene(selectedOptionText, scene.stateDelta);
+          advanceToNextScene(selectedOptionText, scene.stateDelta, scene.story);
         }
       });
     });
@@ -161,14 +161,14 @@ function renderScene(scene) {
       customSubmit.addEventListener('click', () => {
         const customChoice = customInput.value;
         if (customChoice.trim() !== '') {
-          advanceToNextScene(customChoice, scene.stateDelta);
+          advanceToNextScene(customChoice, scene.stateDelta, scene.story);
         }
       });
     }
   }, 0);
 }
 
-async function handleRiskyChoice(actionText, stateDelta) {
+async function handleRiskyChoice(actionText, stateDelta, storyText) {
   const modal = document.getElementById('dice-roll-modal');
   const resultDiv = document.getElementById('dice-result');
 
@@ -189,10 +189,10 @@ async function handleRiskyChoice(actionText, stateDelta) {
   modal.classList.add('hidden');
 
   const choice = { action: actionText, roll: roll };
-  advanceToNextScene(choice, stateDelta);
+  advanceToNextScene(choice, stateDelta, storyText);
 }
 
-async function advanceToNextScene(choice, stateDelta) {
+async function advanceToNextScene(choice, stateDelta, storyText = '') {
   console.log(`Player chose: ${choice}`);
   document.getElementById('app').innerHTML = '<p>Loading next scene...</p>';
 
@@ -202,11 +202,12 @@ async function advanceToNextScene(choice, stateDelta) {
   gameState.sessionState.turn = (gameState.sessionState.turn || 0) + 1;
   gameState.lastChoice = choice;
 
+  // Save the event that just concluded
   await saveEvent(currentStoryId, {
     turn: gameState.sessionState.turn,
     choice: choice,
     stateDelta: stateDelta,
-    story: document.getElementById('story-text').innerText // Save the generated story text
+    story: storyText
   });
 
   const history = await getHistory(currentStoryId, 5);
@@ -247,7 +248,7 @@ async function startGame(storyId, lang) {
   }
 
   renderSidePanel();
-  advanceToNextScene("The story begins.", {});
+  advanceToNextScene("The story begins.", {}, "Welcome to your story!");
 }
 
 function showLanguageSelector() {
@@ -255,15 +256,41 @@ function showLanguageSelector() {
   document.getElementById('language-selector').classList.remove('hidden');
 }
 
-async function handleNewStory() {
+async function showStartScreen(lang) {
+  const startScreen = document.getElementById('start-screen');
+  const langSelector = document.getElementById('language-selector');
+
+  // Fetch i18n data to translate the start screen
+  try {
+    const response = await fetch(`./i18n/${lang}.json`);
+    const i18n = await response.json();
+    const texts = i18n.start_screen;
+
+    startScreen.querySelector('h1').textContent = texts.title;
+    document.getElementById('new-story-btn').textContent = texts.new_story;
+    document.getElementById('load-story-btn').textContent = texts.load_story;
+    startScreen.querySelector('#saved-stories-container h3').textContent = texts.saved_stories;
+  } catch (e) {
+    console.error("Could not load translations for start screen", e);
+  }
+
+  langSelector.classList.add('hidden');
+  startScreen.classList.remove('hidden');
+
+  // Set up listeners now that the screen is visible and translated
+  document.getElementById('new-story-btn').addEventListener('click', () => handleNewStory(lang));
+  document.getElementById('load-story-btn').addEventListener('click', () => handleLoadStory(lang));
+}
+
+async function handleNewStory(lang) {
   const title = prompt("Enter a title for your new story:", "My Epic Adventure");
   if (title) {
     currentStoryId = await createNewStory(title);
-    showLanguageSelector();
+    startGame(currentStoryId, lang);
   }
 }
 
-async function handleLoadStory() {
+async function handleLoadStory(lang) {
   const stories = await getAllStories();
   const list = document.getElementById('saved-stories-list');
   const container = document.getElementById('saved-stories-container');
@@ -276,8 +303,7 @@ async function handleLoadStory() {
       li.textContent = `${story.title} (Last played: ${new Date(story.last_played).toLocaleString()})`;
       li.dataset.id = story.id;
       li.addEventListener('click', () => {
-        currentStoryId = story.id;
-        showLanguageSelector();
+        startGame(story.id, lang);
       });
       list.appendChild(li);
     });
@@ -288,19 +314,14 @@ async function handleLoadStory() {
 async function main() {
   await initDB();
 
-  // Start Screen Logic
-  document.getElementById('new-story-btn').addEventListener('click', handleNewStory);
-  document.getElementById('load-story-btn').addEventListener('click', handleLoadStory);
-
   // Language Selector Logic
   document.querySelectorAll('.flag-button').forEach(button => {
     button.addEventListener('click', () => {
       const lang = button.dataset.lang;
-      document.getElementById('language-selector').classList.add('hidden');
       if (document.fullscreenEnabled) {
         document.documentElement.requestFullscreen().catch(err => console.warn(err));
       }
-      startGame(currentStoryId, lang);
+      showStartScreen(lang);
     });
   });
 

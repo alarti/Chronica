@@ -11,5 +11,12 @@
       "title": "The Awakening",
       "toast": "Your story begins."
     }
+  },
+  "start_screen": {
+    "title": "Chronica: Infinite Stories",
+    "new_story": "Start New Story",
+    "load_story": "Load Story",
+    "saved_stories": "Saved Stories",
+    "no_saved_stories": "No saved stories found."
   }
 }

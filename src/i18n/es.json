@@ -11,5 +11,12 @@
 "title": "El Despertar",
 "toast": "Tu historia comienza."
 }
+  },
+  "start_screen": {
+    "title": "Chronica: Historias Infinitas",
+    "new_story": "Empezar Nueva Historia",
+    "load_story": "Cargar Historia",
+    "saved_stories": "Historias Guardadas",
+    "no_saved_stories": "No se encontraron historias guardadas."
 }
 }
