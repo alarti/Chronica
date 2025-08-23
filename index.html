@@ -46,6 +46,22 @@
     <div id="new-story-dialog" class="hidden">
         <h3>Name Your New Saga</h3>
         <input type="text" id="new-story-title-input" placeholder="e.g., The Quest for the Lost Amulet">
+
+        <div id="player-setup-container">
+            <div class="player-option">
+                <label for="player-count">Number of Players:</label>
+                <select id="player-count" name="player-count">
+                    <option value="1" selected>1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                </select>
+            </div>
+            <div id="player-names-container">
+                <!-- Player name inputs will be generated here by JS -->
+            </div>
+        </div>
+
         <div id="time-limit-selection">
             <h4>Select Time Limit:</h4>
             <div class="time-options">

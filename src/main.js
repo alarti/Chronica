@@ -452,11 +452,35 @@ async function handleNewStory(lang) {
   showScreen('new-story-dialog');
   const input = document.getElementById('new-story-title-input');
   const submitBtn = document.getElementById('new-story-submit-btn');
+  const playerCountSelector = document.getElementById('player-count');
+  const playerNamesContainer = document.getElementById('player-names-container');
+
+  const updatePlayerNameInputs = () => {
+    const count = parseInt(playerCountSelector.value, 10);
+    playerNamesContainer.innerHTML = ''; // Clear existing inputs
+    for (let i = 1; i <= count; i++) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'player-name-input';
+        input.placeholder = `Player ${i} Name`;
+        playerNamesContainer.appendChild(input);
+    }
+  }
+
+  playerCountSelector.addEventListener('change', updatePlayerNameInputs);
+  updatePlayerNameInputs(); // Initial call
 
   submitBtn.onclick = async () => {
     const title = input.value;
     if (title.trim()) {
       const timeLimit = document.querySelector('input[name="time-limit"]:checked').value;
+
+      const playerNameInputs = document.querySelectorAll('.player-name-input');
+      const playerNames = Array.from(playerNameInputs).map(input => input.value || input.placeholder);
+      console.log("Starting multiplayer game with players:", playerNames);
+
+      // For now, we'll still start a single player game.
+      // The playerNames array will be used in the next phase.
       currentStoryId = await createNewStory(title);
       startGame(currentStoryId, lang, parseInt(timeLimit, 10));
     }
