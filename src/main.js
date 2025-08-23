@@ -1,5 +1,5 @@
 import { generateScene } from './engine.js';
-import { initDB, saveEvent, getHistory } from './database.js';
+import { initDB, createNewStory, getAllStories, saveEvent, getHistory } from './database.js';
 
 function typewriter(element, text, speed = 50, callback = () => {}) {
   let i = 0;
@@ -25,6 +25,7 @@ function renderError(message) {
 // --- Global Game State ---
 let gameState = {};
 let timerInterval;
+let currentStoryId = null;
 
 function applyStateDelta(delta) {
   if (!delta) return;
@@ -193,112 +194,125 @@ async function handleRiskyChoice(actionText, stateDelta) {
 
 async function advanceToNextScene(choice, stateDelta) {
   console.log(`Player chose: ${choice}`);
-  const appDiv = document.getElementById('app');
-  appDiv.innerHTML = '<p>Loading next scene...</p>';
+  document.getElementById('app').innerHTML = '<p>Loading next scene...</p>';
 
-  // Apply the delta from the last scene's choice
   applyStateDelta(stateDelta);
-  renderSidePanel(); // Update panel after state changes
+  renderSidePanel();
 
-  // Update game state
   gameState.sessionState.turn = (gameState.sessionState.turn || 0) + 1;
   gameState.lastChoice = choice;
 
-  // Save the event to IndexedDB
-  await saveEvent({
+  await saveEvent(currentStoryId, {
     turn: gameState.sessionState.turn,
     choice: choice,
-    stateDelta: stateDelta // Save the delta that LED to this state
+    stateDelta: stateDelta,
+    story: document.getElementById('story-text').innerText // Save the generated story text
   });
 
-  // Get recent history to provide context to the AI
-  const history = await getHistory(5);
+  const history = await getHistory(currentStoryId, 5);
   gameState.sessionState.history = history;
 
-  // Check for forced risk roll
   if (gameState.sessionState.risk >= 100) {
-    gameState.sessionState.risk = 0; // Reset risk
+    gameState.sessionState.risk = 0;
     handleRiskyChoice("A forced consequence of mounting risk!", {});
-    return; // Stop normal scene generation for this turn
+    return;
   }
 
   try {
     const nextScene = await generateScene(gameState);
-    console.log("Generated Scene:", nextScene);
     renderScene(nextScene);
   } catch (error) {
-    console.error("Failed to generate the next scene:", error);
-    renderError("Could not continue your adventure. Please try refreshing the page.");
+    console.error("Failed to generate next scene:", error);
+    renderError("Could not continue your adventure.");
   }
 }
 
-async function startGame(lang) {
-  console.log(`Starting game with language: ${lang}`);
+async function startGame(storyId, lang) {
+  console.log(`Starting game for story ${storyId} with language: ${lang}`);
+  currentStoryId = storyId;
   startTimer();
-  const appDiv = document.getElementById('app');
-  appDiv.style.display = 'block';
+  document.getElementById('app').style.display = 'flex';
 
-  // Set initial state
   gameState = {
     lang: lang,
     playerProfile: { name: 'Player', lang: lang },
-    sessionState: {
-      health: 100,
-      mana: 100,
-      risk: 0,
-      inventory: { 'Health Potion': 1 },
-      flags: {},
-      worldState: {},
-      turn: 0
-    },
+    sessionState: { health: 100, mana: 100, risk: 0, inventory: {}, flags: {}, worldState: {}, turn: 0 },
     lastChoice: null
   };
 
-  // Reconstruct state from history
-  const history = await getHistory(Infinity); // Get all events
+  const history = await getHistory(currentStoryId, Infinity);
   if (history.length > 0) {
     console.log('Reconstructing state from history...');
-    // Events are sorted newest first, so we reverse to apply them in order
     history.reverse().forEach(event => applyStateDelta(event.stateDelta));
   }
 
-  renderSidePanel(); // Render panel with initial/reconstructed state
-
-  // Initial scene generation is just like advancing to the next scene
+  renderSidePanel();
   advanceToNextScene("The story begins.", {});
+}
+
+function showLanguageSelector() {
+  document.getElementById('start-screen').classList.add('hidden');
+  document.getElementById('language-selector').classList.remove('hidden');
+}
+
+async function handleNewStory() {
+  const title = prompt("Enter a title for your new story:", "My Epic Adventure");
+  if (title) {
+    currentStoryId = await createNewStory(title);
+    showLanguageSelector();
+  }
+}
+
+async function handleLoadStory() {
+  const stories = await getAllStories();
+  const list = document.getElementById('saved-stories-list');
+  const container = document.getElementById('saved-stories-container');
+  list.innerHTML = '';
+  if (stories.length === 0) {
+    list.innerHTML = '<li>No saved stories found.</li>';
+  } else {
+    stories.forEach(story => {
+      const li = document.createElement('li');
+      li.textContent = `${story.title} (Last played: ${new Date(story.last_played).toLocaleString()})`;
+      li.dataset.id = story.id;
+      li.addEventListener('click', () => {
+        currentStoryId = story.id;
+        showLanguageSelector();
+      });
+      list.appendChild(li);
+    });
+  }
+  container.classList.remove('hidden');
 }
 
 async function main() {
   await initDB();
 
+  // Start Screen Logic
+  document.getElementById('new-story-btn').addEventListener('click', handleNewStory);
+  document.getElementById('load-story-btn').addEventListener('click', handleLoadStory);
+
+  // Language Selector Logic
+  document.querySelectorAll('.flag-button').forEach(button => {
+    button.addEventListener('click', () => {
+      const lang = button.dataset.lang;
+      document.getElementById('language-selector').classList.add('hidden');
+      if (document.fullscreenEnabled) {
+        document.documentElement.requestFullscreen().catch(err => console.warn(err));
+      }
+      startGame(currentStoryId, lang);
+    });
+  });
+
+  // Side Panel Logic
   const menuButton = document.getElementById('menu-button');
   const sidePanel = document.getElementById('side-panel');
-
   if(menuButton && sidePanel) {
     menuButton.addEventListener('click', () => {
-      renderSidePanel(); // Ensure panel is up-to-date when opened
+      renderSidePanel();
       sidePanel.classList.toggle('visible');
     });
   }
-
-  const selector = document.getElementById('language-selector');
-  const buttons = document.querySelectorAll('.flag-button');
-
-  buttons.forEach(button => {
-    button.addEventListener('click', () => {
-      const lang = button.dataset.lang;
-
-      // Enter fullscreen mode
-      if (document.fullscreenEnabled) {
-        document.documentElement.requestFullscreen().catch(err => {
-          console.warn(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
-        });
-      }
-
-      selector.style.display = 'none';
-      startGame(lang);
-    });
-  });
 }
 
 main();
