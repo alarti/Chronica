@@ -15,6 +15,10 @@
             <h3>Saved Stories</h3>
             <ul id="saved-stories-list"></ul>
         </div>
+        <div class="creator-credits">
+            <p>Created by Alberto Arce</p>
+            <a href="https://buymeacoffee.com/albertoarce" target="_blank" class="coffee-btn">Buy me a coffee</a>
+        </div>
     </div>
 
     <div id="language-selector">
@@ -39,17 +43,61 @@
     </div>
 
     <div id="dice-roll-modal" class="hidden">
-        <img src="https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExb3BqZ2hjaGZpZ3gyYndqZWF4YjRma2ZlZGQ0Z2VjZzBqYmJ6d3BocyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l44QzsD1BZm2yJvDa/giphy.gif" alt="Dice rolling...">
+        <img src="https://media1.giphy.com/media/KKnYitBECKgAVjIKph/giphy.gif" alt="Dice rolling...">
         <div id="dice-result"></div>
     </div>
 
     <div id="new-story-dialog" class="hidden">
         <h3>Name Your New Saga</h3>
         <input type="text" id="new-story-title-input" placeholder="e.g., The Quest for the Lost Amulet">
+
+        <div id="player-setup-container">
+            <div class="player-option">
+                <label for="player-count">Number of Players:</label>
+                <select id="player-count" name="player-count">
+                    <option value="1" selected>1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                </select>
+            </div>
+            <div id="player-names-container">
+                <!-- Player name inputs will be generated here by JS -->
+            </div>
+        </div>
+
+        <div id="time-limit-selection">
+            <h4>Select Time Limit:</h4>
+            <div class="time-options">
+                <label>
+                    <input type="radio" name="time-limit" value="30" checked> 30 Minutes
+                </label>
+                <label>
+                    <input type="radio" name="time-limit" value="60"> 60 Minutes
+                </label>
+                <label>
+                    <input type="radio" name="time-limit" value="0"> No Limit
+                </label>
+            </div>
+        </div>
         <button id="new-story-submit-btn">Begin</button>
     </div>
 
-    <div id="app" style="display: none;"></div>
+    <div id="app"></div>
+
+    <div id="end-screen" class="hidden">
+        <h2>Time's Up!</h2>
+        <p>Your adventure has come to an end.</p>
+        <div id="final-stats">
+            <!-- Final stats will be rendered here -->
+        </div>
+        <div class="end-screen-buttons">
+            <button id="download-pdf-btn">Download Story as PDF</button>
+            <button id="restart-btn">Play Again</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script type="module" src="src/main.js"></script>
 </body>
 </html>

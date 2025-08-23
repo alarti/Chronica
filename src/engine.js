@@ -60,47 +60,164 @@ async function getSummary(history) {
   }
 }
 
+const getEndingPrompt = (finalState) => {
+  return `
+You are the epilogue writer for a text-based RPG called “Chronica: Infinite Stories”.
+Your task is to write a short, flavorful, and conclusive final paragraph for the adventure based on the final state of the game.
+
+**Game Title:** ${finalState.storyTitle}
+**Game Over Reason:** ${finalState.reason}
+**Final Party State:** ${JSON.stringify(finalState.players.map(p => ({ name: p.name, health: p.health, isAlive: p.isAlive })))}
+
+**Directives:**
+1.  Write a single, compelling paragraph that serves as an epilogue.
+2.  If the reason is "time_up", describe how the party was overwhelmed or ran out of time.
+3.  If the reason is "party_defeated", describe their noble (or ignoble) final stand.
+4.  Reference the final state of the players. If some survived, mention them. If all perished, reflect on their legacy.
+5.  The tone should match the game's title and theme.
+6.  Do not output JSON. Output only the raw text of the epilogue paragraph.
+`;
+};
+
+export async function generateEnding(finalState) {
+  const prompt = getEndingPrompt(finalState);
+  const payload = { model: 'openai', messages: [{ role: 'user', content: prompt }] };
+  const apiUrl = 'https://text.pollinations.ai/openai';
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok) throw new Error('API failed');
+    const result = await response.json();
+    return result.choices[0].message.content;
+  } catch (error) {
+    console.error("Failed to generate ending:", error);
+    return "And so, the adventure concluded, its final tales lost to the winds of time."; // Fallback
+  }
+}
+
+const getCharacterPrompt = (playerNames, storyTitle) => {
+  const namesString = playerNames.join(', ');
+  return `
+You are a creative Character Generator for a text-based RPG called “Chronica: Infinite Stories”.
+Your task is to create a unique and interesting character for each player name provided.
+The theme of the story is: "${storyTitle}". Generate characters that would fit well within this theme.
+
+**Player Names:** ${namesString}
+
+**Directives:**
+1.  For each player, create a character with a unique \`race\` and \`class\`. Be creative (e.g., "Rock Golem Brawler", "Sentient Toaster Necromancer", "Human Detective").
+2.  Provide a 1-sentence \`description\` for each character that captures their personality.
+3.  Ensure the \`name\` field in the output matches the player name exactly.
+4.  Return EXACTLY a JSON array of objects, one for each player, with the following structure (no markdown, no extra keys):
+[
+  {
+    "name": "PlayerName1",
+    "race": "Some Race",
+    "class": "Some Class",
+    "description": "A short, flavorful description."
+  },
+  {
+    "name": "PlayerName2",
+    "race": "Another Race",
+    "class": "Another Class",
+    "description": "Another short, flavorful description."
+  }
+]
+`;
+};
+
+export async function generateCharacters(playerNames, storyTitle) {
+  const prompt = getCharacterPrompt(playerNames, storyTitle);
+  const payload = { model: 'openai', messages: [{ role: 'user', content: prompt }] };
+  const apiUrl = 'https://text.pollinations.ai/openai';
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      console.error(`Character generation API failed with status ${response.status}`);
+      throw new Error('API failed'); // Trigger fallback
+    }
+
+    const result = await response.json();
+    const jsonResponseString = result.choices[0].message.content;
+    const characters = JSON.parse(jsonResponseString);
+    // Ensure the generated characters match the requested names
+    if (characters.length !== playerNames.length) {
+        throw new Error("AI returned incorrect number of characters.");
+    }
+    return characters;
+
+  } catch (error) {
+    console.error("Failed to generate characters, using fallback:", error);
+    // Fallback data
+    return playerNames.map(name => ({
+      name: name,
+      race: "Human",
+      class: "Adventurer",
+      description: "A brave soul ready for anything."
+    }));
+  }
+}
+
 // This is the prompt contract that instructs the AI.
-const getPrompt = (input, summary) => {
+const getPrompt = (input, summary, options = {}) => {
+  let specialInstructions = '';
+  if (options.isRiddleTurn) {
+    specialInstructions = `
+**SPECIAL INSTRUCTION: This is a riddle turn!**
+Your main task is to present a riddle or puzzle. The "story" text should describe the puzzle.
+You MUST provide three options: one is the correct answer, and two are incorrect.
+The incorrect options MUST have a health penalty, e.g., \`"stateDelta": {"health": -15}\`.
+The correct answer should have a positive or neutral stateDelta.
+`;
+  }
+
   return `
 You are the narrative engine for a game called “Chronica: Infinite Stories” by Alberto Arce.
-Your purpose is to generate immersive, branching narrative scenes and image-ready prompts.
+Your purpose is to generate fast-paced, engaging, and challenging narrative scenes.
 The user's chosen language is '${input.lang}'. All output must be in this language.
 The content must be family-friendly.
 
+${specialInstructions}
+
 **Core Directives:**
-1.  **Create a Deep Plot:** Weave a story with a clear narrative arc (beginning, rising action, climax, resolution). The story must have a finite end.
-2.  **Inject "Viral" Hooks:** Actively create moments of high tension, moral dilemmas, unexpected plot twists, and strong character motivations. End scenes on cliffhangers when appropriate to encourage engagement.
-3.  **Maintain Consistency:**
+1.  **React to the Last Action:** The user's last action was: "${input.lastChoice}". The "story" you generate next MUST be a direct and logical consequence of this action. This is the most important rule.
+2.  **Be Direct and Action-Oriented:** Focus on creating immediate challenges. Introduce enemies, obstacles, and conflicts frequently. The narrative should be concise and to the point, avoiding lengthy descriptions.
+3.  **Introduce Puzzles and Riddles:** Regularly include logical puzzles, riddles, or environmental challenges. When creating a puzzle, ensure some of the provided \`options\` are incorrect attempts at solving it. These incorrect options should result in a negative \`stateDelta\`, such as \`{"health": -10}\`, to represent a penalty.
+4.  **Maintain Consistency:**
     -   **Characters:** Any characters introduced must remain consistent in their appearance, personality, and name.
     -   **Visuals:** Image prompts must maintain a consistent cinematic, dark fantasy style.
 
 **Story So Far (Summary):**
 ${summary}
 
-**Current Player State:**
-- Profile: ${JSON.stringify(input.playerProfile)}
+**Party State:**
+- Players: ${JSON.stringify(input.players.map(p => ({name: p.name, race: p.race, class: p.class, isAlive: p.isAlive})))}
+- Current Turn: It is ${input.players[input.turn].name}'s turn to act.
 - Last Choice: ${input.lastChoice || 'None'}
+- Story Theme: The story is titled "${input.storyTitle}". The entire narrative, including the setting, characters, and tone, MUST strictly adhere to the theme of this title. For example, if the title is "Galactic Kitchen Wars", the story should be a humorous sci-fi adventure about sentient kitchen utensils. If the title is "The Last Detective", it should be a grim noir mystery. Be creative and adapt the genre to the title.
 
 Your task is to generate the NEXT scene, continuing from the history.
 Return EXACTLY a JSON object with the following structure (no markdown, no extra keys):
 {
-  "story": "Up to 200 words of narrative in '${input.lang}'.",
+  "story": "A brief, direct narrative (max 80 words) in '${input.lang}'.",
   "options": [
-    {"text": "A safe option in '${input.lang}'...", "isRisky": false},
-    {"text": "A risky option that requires a dice roll...", "isRisky": true},
-    {"text": "Another safe option...", "isRisky": false}
+    {"text": "An action-oriented option in '${input.lang}'...", "isRisky": false, "stateDelta": {"risk": 5}},
+    {"text": "A risky option that requires a dice roll...", "isRisky": true, "stateDelta": {"risk": 20, "health": -5}},
+    {"text": "A puzzle-solving or investigative option...", "isRisky": false, "stateDelta": {"mana": -5}}
   ],
   "imagePrompt": "A short, vivid scene description for illustration, following the style rules.",
   "sceneTags": ["comma-free", "single", "word", "tags"],
   "ui": { "title": "Short scene title in '${input.lang}'", "toast": "1 short line reacting to last choice in '${input.lang}'" },
-  "stateDelta": {
-    "health": -10,
-    "mana": -5,
-    "risk": 10,
-    "inventory": { "Health Potion": -1, "Ancient Scroll": 1 },
-    "flags": { "door_unlocked": true }
-  },
   "credits": "Created by Alberto Arce."
 }
 `;
@@ -113,12 +230,12 @@ Return EXACTLY a JSON object with the following structure (no markdown, no extra
  * @param {GameInput} input - The current game state and player choices.
  * @returns {Promise<object>} The next scene, including narrative, options, and state changes.
  */
-export async function generateScene(input) {
-  const history = input.sessionState.history || [];
+export async function generateScene(input, options = {}) {
+  const history = input.history || [];
   const summary = await getSummary(history);
 
   const apiUrl = 'https://text.pollinations.ai/openai';
-  const prompt = getPrompt(input, summary);
+  const prompt = getPrompt(input, summary, options);
   const payload = { model: 'openai', messages: [{ role: 'user', content: prompt }] };
 
   try {
@@ -137,8 +254,8 @@ export async function generateScene(input) {
     const jsonResponseString = result.choices[0].message.content;
     const scene = JSON.parse(jsonResponseString);
 
-    // Ensure the credits are always present.
-    scene.credits = "Created by Alberto Arce.";
+    // The credits are part of the prompt, so this is not needed.
+    // scene.credits = "Created by Alberto Arce.";
     return scene;
 
   } catch (error) {
