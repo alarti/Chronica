@@ -139,7 +139,7 @@ The content must be family-friendly.
 
 **Core Directives:**
 1.  **Be Direct and Action-Oriented:** Focus on creating immediate challenges. Introduce enemies, obstacles, and conflicts frequently. The narrative should be concise and to the point, avoiding lengthy descriptions.
-2.  **Introduce Puzzles and Riddles:** Regularly include logical puzzles, riddles, or environmental challenges that the player must solve to proceed. These should be clever but solvable.
+2.  **Introduce Puzzles and Riddles:** Regularly include logical puzzles, riddles, or environmental challenges. When creating a puzzle, ensure some of the provided \`options\` are incorrect attempts at solving it. These incorrect options should result in a negative \`stateDelta\`, such as \`{"health": -10}\`, to represent a penalty.
 3.  **Maintain Consistency:**
     -   **Characters:** Any characters introduced must remain consistent in their appearance, personality, and name.
     -   **Visuals:** Image prompts must maintain a consistent cinematic, dark fantasy style.
@@ -151,6 +151,7 @@ ${summary}
 - Players: ${JSON.stringify(input.players.map(p => ({name: p.name, race: p.race, class: p.class, isAlive: p.isAlive})))}
 - Current Turn: It is ${input.players[input.turn].name}'s turn to act.
 - Last Choice: ${input.lastChoice || 'None'}
+- Story Theme: The story is titled "${input.storyTitle}". The entire narrative, including the setting, characters, and tone, MUST strictly adhere to the theme of this title. For example, if the title is "Galactic Kitchen Wars", the story should be a humorous sci-fi adventure about sentient kitchen utensils. If the title is "The Last Detective", it should be a grim noir mystery. Be creative and adapt the genre to the title.
 
 Your task is to generate the NEXT scene, continuing from the history.
 Return EXACTLY a JSON object with the following structure (no markdown, no extra keys):

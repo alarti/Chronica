@@ -322,6 +322,17 @@ body {
     margin-bottom: 0.5rem;
 }
 
+.player-stats.active-player {
+    border-color: #3498db; /* Blue highlight for active player */
+    box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
+}
+
+.player-stats.dead {
+    opacity: 0.5;
+    background-color: #333;
+    text-decoration: line-through;
+}
+
 .player-class {
     font-style: italic;
     font-size: 0.9rem;

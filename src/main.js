@@ -61,6 +61,16 @@ function applyStateDelta(delta) {
     if (currentPlayer.health > 100) currentPlayer.health = 100;
     if (currentPlayer.mana < 0) currentPlayer.mana = 0;
     if (currentPlayer.mana > 100) currentPlayer.mana = 100;
+
+    if (currentPlayer.health <= 0) {
+        currentPlayer.isAlive = false;
+    }
+  }
+
+  // Check for party wipe
+  const livingPlayers = gameState.players.filter(p => p.isAlive);
+  if (livingPlayers.length === 0) {
+      endGame('party_defeated');
   }
 
   // Apply party-wide changes (risk)
@@ -182,8 +192,12 @@ function endGame(reason) {
   clearInterval(timerInterval);
 
   const endScreen = document.getElementById('end-screen');
+  const endTitle = endScreen.querySelector('h2');
+
   if (reason === 'time_up') {
-    endScreen.querySelector('h2').textContent = "Time's Up!";
+    endTitle.textContent = "Time's Up!";
+  } else if (reason === 'party_defeated') {
+    endTitle.textContent = "Your Party Has Been Defeated";
   }
 
   // Clear the final stats container for now, as its logic will be more complex
@@ -240,7 +254,10 @@ function renderSidePanel() {
   const panel = document.getElementById('side-panel');
   if (!panel || !gameState.players) return;
 
-  let playerStatsHtml = gameState.players.map(player => {
+  let playerStatsHtml = gameState.players.map((player, index) => {
+    const isActive = index === gameState.turn;
+    const activeClass = isActive ? 'active-player' : '';
+
     if (!player.isAlive) {
         return `
         <div class="player-stats dead">
@@ -248,7 +265,7 @@ function renderSidePanel() {
         </div>`;
     }
     return `
-    <div class="player-stats">
+    <div class="player-stats ${activeClass}">
         <h4>${player.name} - <span class="player-class">${player.race} ${player.class}</span></h4>
         <div class="stat-bar-container">
           <label>Health</label>
@@ -353,6 +370,23 @@ function renderScene(scene) {
   }, 0);
 }
 
+function advanceTurn() {
+    if (!gameState.players || gameState.players.length === 0) return;
+
+    // Find the number of living players
+    const livingPlayers = gameState.players.filter(p => p.isAlive);
+    if (livingPlayers.length === 0) {
+        return; // Game over is handled elsewhere, but no turn to advance to.
+    }
+
+    let nextTurn = (gameState.turn + 1) % gameState.players.length;
+    // Loop until we find a living player
+    while (!gameState.players[nextTurn].isAlive) {
+        nextTurn = (nextTurn + 1) % gameState.players.length;
+    }
+    gameState.turn = nextTurn;
+}
+
 async function handleRiskyChoice(actionText, stateDelta, storyText, imagePrompt) {
   const modal = document.getElementById('dice-roll-modal');
   const resultDiv = document.getElementById('dice-result');
@@ -367,6 +401,13 @@ async function handleRiskyChoice(actionText, stateDelta, storyText, imagePrompt)
   const roll = Math.floor(Math.random() * 20) + 1;
   resultDiv.innerText = roll;
   resultDiv.classList.add('visible');
+
+  // Grant mana on high rolls
+  if (roll >= 18) {
+      if (!stateDelta) stateDelta = {};
+      stateDelta.mana = (stateDelta.mana || 0) + 10;
+      console.log("Critical success! +10 Mana.");
+  }
 
   // Time for player to see the result
   await new Promise(resolve => setTimeout(resolve, 2000));
@@ -384,8 +425,8 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
   applyStateDelta(stateDelta);
   renderSidePanel();
 
-  // Simple turn progression. This will be more complex later.
-  gameState.turn = (gameState.turn + 1) % gameState.players.length;
+  // Advance the turn to the next living player
+  advanceTurn();
   gameState.lastChoice = choice;
 
   // Save the event that just concluded
@@ -415,7 +456,7 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
   }
 }
 
-async function startGame(storyId, lang, timeLimit = 0, characters) {
+async function startGame(storyId, lang, timeLimit = 0, characters, title = 'My Adventure') {
   console.log(`Starting game for story ${storyId} with lang: ${lang}, time: ${timeLimit}min, players: ${characters.map(c=>c.name).join(', ')}`);
   currentStoryId = storyId;
   startTimer(timeLimit);
@@ -441,6 +482,7 @@ async function startGame(storyId, lang, timeLimit = 0, characters) {
 
   gameState = {
     lang: lang,
+    storyTitle: title,
     players: players,
     turn: 0, // Index for the current player
     risk: 0,
@@ -519,7 +561,7 @@ async function handleNewStory(lang) {
             const characters = await generateCharacters(playerNames, title);
 
             currentStoryId = await createNewStory(title);
-            startGame(currentStoryId, lang, parseInt(timeLimit, 10), characters);
+            startGame(currentStoryId, lang, parseInt(timeLimit, 10), characters, title);
         } catch (error) {
             console.error("Failed to start new story:", error);
             renderError("Failed to generate the story. Please try again.");
@@ -546,7 +588,7 @@ async function handleLoadStory(lang) {
       li.addEventListener('click', () => {
         // Loaded stories are single player, no time limit, no AI generation
         const defaultCharacters = [{ name: 'Player', race: 'Human', class: 'Adventurer', description: 'A returning hero.' }];
-        startGame(story.id, lang, 0, defaultCharacters);
+        startGame(story.id, lang, 0, defaultCharacters, story.title);
       });
       list.appendChild(li);
     });
