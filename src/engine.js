@@ -212,6 +212,8 @@ const getPrompt = (input, summary, options = {}) => {
     return getRiddlePrompt(input);
   }
 
+    const currentSceneGoal = input.plot?.scenes[input.sceneIndex]?.description || "The story continues, with the heroes charting their own path.";
+
   return `
 You are the narrative engine for a game called “Chronica: Infinite Stories” by Alberto Arce.
 Your purpose is to generate fast-paced, engaging, and challenging narrative scenes.
@@ -233,11 +235,12 @@ ${summary}
 - Players: ${JSON.stringify(input.players.map(p => ({name: p.name, race: p.race, class: p.class, isAlive: p.isAlive})))}
 - Current Turn: It is ${input.players[input.turn].name}'s turn to act.
 - Last Choice: ${input.lastChoice || 'None'}
-- Story Theme: The story is titled "${input.storyTitle}". The entire narrative, including the setting, characters, and tone, MUST strictly adhere to the theme of this title.
+- Story Theme: The story is titled "${input.storyTitle}". The entire narrative must strictly adhere to this theme.
 - Known World State: Use these details for consistency. ${JSON.stringify(input.worldState)}
+- **Current Scene Goal:** The current objective for the heroes is: "${currentSceneGoal}". Your generated scene must be a step towards accomplishing this goal. As the story progresses (higher scene index out of total scenes), the narrative should build towards a climax and conclusion based on the overall plot.
 
 **Your Task:**
-Generate the NEXT scene. Update the world state with any new characters, locations, or key items.
+Generate the NEXT scene that logically follows the "Last Choice" and moves the story towards the "Current Scene Goal". Update the world state with any new characters, locations, or key items.
 Return EXACTLY a JSON object with the following structure (no markdown, no extra keys):
 {
   "story": "A brief, direct narrative (max 80 words) in '${input.lang}'.",

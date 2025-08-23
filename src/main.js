@@ -227,6 +227,8 @@ async function endGame(reason) {
     endTitle.textContent = "Time's Up!";
   } else if (reason === 'party_defeated') {
     endTitle.textContent = "Your Party Has Been Defeated";
+  } else if (reason === 'story_completed') {
+    endTitle.textContent = "Your Saga is Complete!";
   }
 
   finalStatsContainer.innerHTML = `<p><i>Generating your epilogue...</i></p>`;
@@ -579,6 +581,12 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
 
   // Save the entire game state
   await updateStory(currentStoryId, { gameState: gameState });
+
+    // Check if the story is complete
+    if (gameState.sceneIndex >= gameState.plot.scenes.length) {
+        endGame('story_completed');
+        return;
+    }
 
   const history = await getHistory(currentStoryId, 5);
   gameState.history = history; // Save history at the top level
