@@ -304,6 +304,7 @@ function renderSidePanel() {
 }
 
 function renderRiddle(riddle) {
+    gameState.usedRiddles.push(riddle.acertijo);
     const appDiv = document.getElementById('app');
     appDiv.innerHTML = `
     <div class="scene-overlay"></div>
@@ -573,7 +574,8 @@ async function startGame(storyId, lang, timeLimit = 0, characters, title = 'My A
     inventory: {},
     flags: {},
     worldState: {},
-    lastChoice: null
+    lastChoice: null,
+    usedRiddles: []
   };
 
   const history = await getHistory(currentStoryId, Infinity);

@@ -169,11 +169,16 @@ export async function generateCharacters(playerNames, storyTitle) {
 }
 
 const getRiddlePrompt = (input) => {
+    const usedRiddlesText = input.usedRiddles.length > 0
+        ? `\n**IMPORTANT:** Do not repeat any riddles from this list:\n- ${input.usedRiddles.join('\n- ')}`
+        : '';
+
     return `
 You are a master of puzzles and riddles for the RPG “Chronica: Infinite Stories”.
-Your task is to generate a single, clever riddle or puzzle.
+Your task is to generate a single, clever, and UNIQUE riddle or puzzle.
 The theme of the story is: "${input.storyTitle}". The riddle should fit this theme.
 The user's language is '${input.lang}'.
+${usedRiddlesText}
 
 **Directives:**
 1.  Generate a single riddle. This can be a classic word riddle, a simple math puzzle, or a logic problem.
