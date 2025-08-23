@@ -303,6 +303,38 @@ function renderSidePanel() {
   `;
 }
 
+function renderRiddle(riddle) {
+    const appDiv = document.getElementById('app');
+    appDiv.innerHTML = `
+    <div class="scene-overlay"></div>
+    <div id="subtitle-container">
+        <p id="story-text"></p>
+        <div id="options-container" class="visible">
+            <ul></ul>
+        </div>
+    </div>`;
+
+    const riddleText = document.getElementById('story-text');
+    typewriter(riddleText, riddle.acertijo);
+
+    const optionsList = document.querySelector("#options-container ul");
+    riddle.opciones.forEach(option => {
+        const li = document.createElement('li');
+        const button = document.createElement('button');
+        button.className = 'option-button';
+        button.textContent = option.texto;
+        button.onclick = () => {
+            if (option.correcta) {
+                advanceToNextScene("You solved the riddle correctly!", {mana: 15});
+            } else {
+                advanceToNextScene("You answered the riddle incorrectly and feel a sharp pain.", {health: -15});
+            }
+        };
+        li.appendChild(button);
+        optionsList.appendChild(li);
+    });
+}
+
 function renderScene(scene) {
   const appDiv = document.getElementById('app');
   if (!appDiv) {
@@ -494,8 +526,13 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
         console.log("--- Generating a special riddle! ---");
     }
 
-    const nextScene = await generateScene(gameState, { isRiddleTurn });
-    renderScene(nextScene);
+    const sceneOrRiddle = await generateScene(gameState, { isRiddleTurn });
+
+    if (sceneOrRiddle.acertijo) {
+        renderRiddle(sceneOrRiddle);
+    } else {
+        renderScene(sceneOrRiddle);
+    }
   } catch (error) {
     console.error("Failed to generate next scene:", error);
     renderError("Could not continue your adventure.");
