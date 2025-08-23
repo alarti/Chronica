@@ -277,18 +277,14 @@ body {
 #side-panel {
   position: fixed;
   top: 0;
-  left: -300px; /* Hidden by default */
+  left: 0; /* Visible by default */
   width: 300px;
   height: 100%;
   background-color: rgba(0, 0, 0, 0.9);
   border-right: 2px solid var(--color-text-light);
-  z-index: 3000;
+  z-index: 6000;
   transition: left 0.3s ease-in-out;
   padding: 1rem;
-}
-
-#side-panel.visible {
-  left: 0;
 }
 
 #side-panel.hidden {

@@ -1,6 +1,22 @@
 import { generateScene } from './engine.js';
 import { initDB, createNewStory, getAllStories, saveEvent, getHistory } from './database.js';
 
+const SCREENS = ['language-selector', 'start-screen', 'new-story-dialog', 'app'];
+
+function showScreen(screenId) {
+  SCREENS.forEach(id => {
+    const screen = document.getElementById(id);
+    if (screen) {
+      screen.classList.add('hidden');
+    }
+  });
+
+  const activeScreen = document.getElementById(screenId);
+  if (activeScreen) {
+    activeScreen.classList.remove('hidden');
+  }
+}
+
 function typewriter(element, text, speed = 50, callback = () => {}) {
   let i = 0;
   element.innerHTML = '';
@@ -232,16 +248,15 @@ async function startGame(storyId, lang) {
   console.log(`Starting game for story ${storyId} with language: ${lang}`);
   currentStoryId = storyId;
   startTimer();
-  document.getElementById('app').style.display = 'flex';
-  document.getElementById('language-selector').classList.add('hidden');
+  showScreen('app');
 
   // Set up side panel listener now that the game is starting
   const menuButton = document.getElementById('menu-button');
   const sidePanel = document.getElementById('side-panel');
   if(menuButton && sidePanel) {
-    menuButton.onclick = () => { // Use onclick to avoid multiple listeners if startGame is called again
+    menuButton.onclick = () => {
       renderSidePanel();
-      sidePanel.classList.toggle('visible');
+      sidePanel.classList.toggle('hidden');
     };
   }
 
@@ -262,50 +277,36 @@ async function startGame(storyId, lang) {
   advanceToNextScene("The story begins.", {}, "Welcome to your story!");
 }
 
-function showLanguageSelector() {
-  document.getElementById('start-screen').classList.add('hidden');
-  document.getElementById('language-selector').classList.remove('hidden');
-}
-
 async function showStartScreen(lang) {
-  const startScreen = document.getElementById('start-screen');
-  const langSelector = document.getElementById('language-selector');
-
   // Fetch i18n data to translate the start screen
   try {
     const response = await fetch(`src/i18n/${lang}.json`);
     const i18n = await response.json();
     const texts = i18n.start_screen;
 
-    startScreen.querySelector('h1').textContent = texts.title;
+    document.getElementById('start-screen').querySelector('h1').textContent = texts.title;
     document.getElementById('new-story-btn').textContent = texts.new_story;
     document.getElementById('load-story-btn').textContent = texts.load_story;
-    startScreen.querySelector('#saved-stories-container h3').textContent = texts.saved_stories;
+    document.getElementById('start-screen').querySelector('#saved-stories-container h3').textContent = texts.saved_stories;
   } catch (e) {
     console.error("Could not load translations for start screen", e);
   }
 
-  langSelector.classList.add('hidden');
-  startScreen.classList.remove('hidden');
+  showScreen('start-screen');
 
   // Set up listeners now that the screen is visible and translated
-  document.getElementById('new-story-btn').addEventListener('click', () => handleNewStory(lang));
-  document.getElementById('load-story-btn').addEventListener('click', () => handleLoadStory(lang));
+  document.getElementById('new-story-btn').onclick = () => handleNewStory(lang);
+  document.getElementById('load-story-btn').onclick = () => handleLoadStory(lang);
 }
 
 async function handleNewStory(lang) {
-  const dialog = document.getElementById('new-story-dialog');
+  showScreen('new-story-dialog');
   const input = document.getElementById('new-story-title-input');
   const submitBtn = document.getElementById('new-story-submit-btn');
-
-  dialog.classList.remove('hidden');
-  document.getElementById('start-screen').classList.add('hidden');
 
   submitBtn.onclick = async () => {
     const title = input.value;
     if (title.trim()) {
-      dialog.classList.add('hidden');
-      document.getElementById('start-screen').classList.add('hidden');
       currentStoryId = await createNewStory(title);
       startGame(currentStoryId, lang);
     }
@@ -325,7 +326,6 @@ async function handleLoadStory(lang) {
       li.textContent = `${story.title} (Last played: ${new Date(story.last_played).toLocaleString()})`;
       li.dataset.id = story.id;
       li.addEventListener('click', () => {
-        document.getElementById('start-screen').classList.add('hidden');
         startGame(story.id, lang);
       });
       list.appendChild(li);
@@ -336,6 +336,7 @@ async function handleLoadStory(lang) {
 
 async function main() {
   await initDB();
+  showScreen('language-selector'); // Start at the language selector
 
   // Language Selector Logic
   document.querySelectorAll('.flag-button').forEach(button => {
