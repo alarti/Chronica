@@ -46,10 +46,34 @@
     <div id="new-story-dialog" class="hidden">
         <h3>Name Your New Saga</h3>
         <input type="text" id="new-story-title-input" placeholder="e.g., The Quest for the Lost Amulet">
+        <div id="time-limit-selection">
+            <h4>Select Time Limit:</h4>
+            <div class="time-options">
+                <label>
+                    <input type="radio" name="time-limit" value="30" checked> 30 Minutes
+                </label>
+                <label>
+                    <input type="radio" name="time-limit" value="60"> 60 Minutes
+                </label>
+                <label>
+                    <input type="radio" name="time-limit" value="0"> No Limit
+                </label>
+            </div>
+        </div>
         <button id="new-story-submit-btn">Begin</button>
     </div>
 
     <div id="app"></div>
+
+    <div id="end-screen" class="hidden">
+        <h2>Time's Up!</h2>
+        <p>Your adventure has come to an end.</p>
+        <div id="final-stats">
+            <!-- Final stats will be rendered here -->
+        </div>
+        <button id="restart-btn">Play Again</button>
+    </div>
+
     <script type="module" src="src/main.js"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 import { generateScene } from './engine.js';
 import { initDB, createNewStory, getAllStories, saveEvent, getHistory } from './database.js';
 
-const SCREENS = ['language-selector', 'start-screen', 'new-story-dialog', 'app'];
+const SCREENS = ['language-selector', 'start-screen', 'new-story-dialog', 'app', 'end-screen'];
 
 function showScreen(screenId) {
   SCREENS.forEach(id => {
@@ -68,17 +68,67 @@ function applyStateDelta(delta) {
   }
 }
 
-function startTimer() {
-  const timerElement = document.getElementById('timer');
-  if (!timerElement) return;
+function endGame(reason) {
+  console.log(`Game Over: ${reason}`);
+  clearInterval(timerInterval);
 
-  let seconds = 0;
-  timerInterval = setInterval(() => {
-    seconds++;
-    const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
-    const secs = (seconds % 60).toString().padStart(2, '0');
-    timerElement.textContent = `${mins}:${secs}`;
-  }, 1000);
+  const endScreen = document.getElementById('end-screen');
+  if (reason === 'time_up') {
+    endScreen.querySelector('h2').textContent = "Time's Up!";
+  }
+
+  const finalStatsContainer = document.getElementById('final-stats');
+  if (finalStatsContainer && gameState.sessionState) {
+    const { health, mana, risk } = gameState.sessionState;
+    finalStatsContainer.innerHTML = `
+            <p>Final Health: ${health}</p>
+            <p>Final Mana: ${mana}</p>
+            <p>Final Risk: ${risk}</p>
+        `;
+  }
+
+  showScreen('end-screen');
+
+  document.getElementById('restart-btn').onclick = () => {
+    window.location.reload();
+  };
+}
+
+function startTimer(durationInMinutes = 0) {
+    const timerElement = document.getElementById('timer');
+    if (!timerElement) return;
+
+    if (timerInterval) clearInterval(timerInterval);
+
+    if (durationInMinutes > 0) {
+        // Countdown
+        let totalSeconds = durationInMinutes * 60;
+
+        const updateCountdown = () => {
+            if (totalSeconds < 0) {
+                clearInterval(timerInterval);
+                endGame('time_up');
+                return;
+            }
+            const mins = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+            const secs = (totalSeconds % 60).toString().padStart(2, '0');
+            timerElement.textContent = `${mins}:${secs}`;
+            totalSeconds--;
+        };
+
+        updateCountdown(); // Initial display
+        timerInterval = setInterval(updateCountdown, 1000);
+    } else {
+        // Count up (no limit)
+        let totalSeconds = 0;
+        timerElement.textContent = '00:00';
+        timerInterval = setInterval(() => {
+            totalSeconds++;
+            const mins = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+            const secs = (totalSeconds % 60).toString().padStart(2, '0');
+            timerElement.textContent = `${mins}:${secs}`;
+        }, 1000);
+    }
 }
 
 function renderSidePanel() {
@@ -244,10 +294,10 @@ async function advanceToNextScene(choice, stateDelta, storyText = '') {
   }
 }
 
-async function startGame(storyId, lang) {
-  console.log(`Starting game for story ${storyId} with language: ${lang}`);
+async function startGame(storyId, lang, timeLimit = 0) {
+  console.log(`Starting game for story ${storyId} with lang: ${lang}, time: ${timeLimit}min`);
   currentStoryId = storyId;
-  startTimer();
+  startTimer(timeLimit);
   showScreen('app');
 
   // Set up side panel listener now that the game is starting
@@ -308,8 +358,9 @@ async function handleNewStory(lang) {
   submitBtn.onclick = async () => {
     const title = input.value;
     if (title.trim()) {
+      const timeLimit = document.querySelector('input[name="time-limit"]:checked').value;
       currentStoryId = await createNewStory(title);
-      startGame(currentStoryId, lang);
+      startGame(currentStoryId, lang, parseInt(timeLimit, 10));
     }
   };
 }
@@ -327,7 +378,8 @@ async function handleLoadStory(lang) {
       li.textContent = `${story.title} (Last played: ${new Date(story.last_played).toLocaleString()})`;
       li.dataset.id = story.id;
       li.addEventListener('click', () => {
-        startGame(story.id, lang);
+        // Time limit is not applicable for loaded stories
+        startGame(story.id, lang, 0);
       });
       list.appendChild(li);
     });
