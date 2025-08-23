@@ -70,7 +70,13 @@ Return EXACTLY a JSON object with the following structure (no markdown, no extra
   "imagePrompt": "A short, vivid scene description for illustration, following the style rules.",
   "sceneTags": ["comma-free", "single", "word", "tags"],
   "ui": { "title": "Short scene title in '${input.lang}'", "toast": "1 short line reacting to last choice in '${input.lang}'" },
-  "stateDelta": { "flags": { "key": true }, "inventory": { "gold": "+5" }, "affinity": { "guild": "+1" } },
+  "stateDelta": {
+    "health": -10,
+    "mana": -5,
+    "risk": +10,
+    "inventory": { "Health Potion": -1, "Ancient Scroll": 1 },
+    "flags": { "door_unlocked": true }
+  },
   "credits": "Created by Alberto Arce."
 }
 `;

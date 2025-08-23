@@ -101,11 +101,17 @@ body {
   z-index: 2;
 }
 
-#timer {
+#game-ui-container {
   position: absolute;
   top: 1rem;
   left: 1rem;
   z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+#timer {
   font-family: var(--font-primary);
   font-size: 1.5rem;
   text-shadow: 2px 2px 4px var(--color-text-shadow);
@@ -196,6 +202,80 @@ body {
     transform: scale(1) translate(0, 0);
   }
 }
+
+/* Side Panel */
+#menu-button {
+  background: none;
+  border: 1px solid #fff;
+  color: #fff;
+  font-size: 1.5rem;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  border-radius: 5px;
+  text-shadow: 2px 2px 4px var(--color-text-shadow);
+}
+
+#side-panel {
+  position: fixed;
+  top: 0;
+  left: -300px; /* Hidden by default */
+  width: 300px;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.9);
+  border-right: 2px solid var(--color-text-light);
+  z-index: 3000;
+  transition: left 0.3s ease-in-out;
+  padding: 1rem;
+}
+
+#side-panel.visible {
+  left: 0;
+}
+
+#side-panel.hidden {
+  left: -300px;
+}
+
+#side-panel h3, #side-panel h4 {
+  font-family: var(--font-primary);
+}
+
+.stat-bar-container {
+  margin-bottom: 1rem;
+  font-family: var(--font-secondary);
+}
+
+.stat-bar-container label {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.stat-bar {
+  height: 20px;
+  background-color: #555;
+  border-radius: 3px;
+  border: 1px solid #fff;
+  width: 100%;
+}
+
+.stat-bar > div {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease-in-out;
+}
+
+.health-bar { background-color: #2ecc71; }
+.mana-bar { background-color: #3498db; }
+.risk-bar { background-color: #e74c3c; }
+
+.stat-bar-container span {
+  float: right;
+  margin-top: -1.4rem;
+  font-size: 0.9rem;
+  text-shadow: 1px 1px 2px #000;
+}
+
 
 /* Dice Roll Modal */
 #dice-roll-modal {
