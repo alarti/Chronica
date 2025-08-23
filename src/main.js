@@ -260,6 +260,21 @@ function renderSidePanel() {
   const panel = document.getElementById('side-panel');
   if (!panel || !gameState.players) return;
 
+  const turnIndicator = document.getElementById('turn-indicator');
+  if (turnIndicator) {
+      const currentPlayer = gameState.players[gameState.turn];
+      if (currentPlayer && currentPlayer.isAlive) {
+        turnIndicator.textContent = `Turn: ${currentPlayer.name}`;
+      } else {
+        turnIndicator.textContent = 'Turn: ...';
+      }
+  }
+
+  const roundCounter = document.getElementById('round-counter');
+  if (roundCounter) {
+      roundCounter.textContent = `Round: ${gameState.round || 0}`;
+  }
+
   let playerStatsHtml = gameState.players.map((player, index) => {
     const isActive = index === gameState.turn;
     const activeClass = isActive ? 'active-player' : '';
@@ -301,6 +316,39 @@ function renderSidePanel() {
       <span>${gameState.risk}/100</span>
     </div>
   `;
+}
+
+function renderRiddle(riddle) {
+    gameState.usedRiddles.push(riddle.acertijo);
+    const appDiv = document.getElementById('app');
+    appDiv.innerHTML = `
+    <div class="scene-overlay"></div>
+    <div id="subtitle-container">
+        <p id="story-text"></p>
+        <div id="options-container" class="visible">
+            <ul></ul>
+        </div>
+    </div>`;
+
+    const riddleText = document.getElementById('story-text');
+    typewriter(riddleText, riddle.acertijo);
+
+    const optionsList = document.querySelector("#options-container ul");
+    riddle.opciones.forEach(option => {
+        const li = document.createElement('li');
+        const button = document.createElement('button');
+        button.className = 'option-button';
+        button.textContent = option.texto;
+        button.onclick = () => {
+            if (option.correcta) {
+                advanceToNextScene("You solved the riddle correctly!", {mana: 15});
+            } else {
+                advanceToNextScene("You answered the riddle incorrectly and feel a sharp pain.", {health: -15});
+            }
+        };
+        li.appendChild(button);
+        optionsList.appendChild(li);
+    });
 }
 
 function renderScene(scene) {
@@ -494,8 +542,13 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
         console.log("--- Generating a special riddle! ---");
     }
 
-    const nextScene = await generateScene(gameState, { isRiddleTurn });
-    renderScene(nextScene);
+    const sceneOrRiddle = await generateScene(gameState, { isRiddleTurn });
+
+    if (sceneOrRiddle.acertijo) {
+        renderRiddle(sceneOrRiddle);
+    } else {
+        renderScene(sceneOrRiddle);
+    }
   } catch (error) {
     console.error("Failed to generate next scene:", error);
     renderError("Could not continue your adventure.");
@@ -536,7 +589,8 @@ async function startGame(storyId, lang, timeLimit = 0, characters, title = 'My A
     inventory: {},
     flags: {},
     worldState: {},
-    lastChoice: null
+    lastChoice: null,
+    usedRiddles: []
   };
 
   const history = await getHistory(currentStoryId, Infinity);
@@ -674,6 +728,16 @@ async function handleLoadStory(lang) {
 async function main() {
   await initDB();
   showScreen('language-selector'); // Start at the language selector
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').then(registration => {
+        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+      }, err => {
+        console.log('ServiceWorker registration failed: ', err);
+      });
+    });
+  }
 
   // Language Selector Logic
   document.querySelectorAll('.flag-button').forEach(button => {

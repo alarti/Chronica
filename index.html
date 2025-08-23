@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
     <title>Chronica: Infinite Stories</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#000000">
+    <link rel="apple-touch-icon" href="src/asset/logo.png">
 </head>
 <body>
     <div id="start-screen" class="hidden">
@@ -22,6 +25,7 @@
     </div>
 
     <div id="language-selector">
+        <img src="src/asset/logo.png" alt="Chronica Logo" class="logo-large">
         <h2>Select Your Language</h2>
         <div class="flags">
             <button class="flag-button" data-lang="en"><img src="https://flagcdn.com/w80/gb.png" alt="English"></button>
@@ -32,7 +36,12 @@
         </div>
     </div>
 
+    <div id="fixed-logo-icon">
+        <img src="src/asset/logo.png" alt="Chronica Icon">
+    </div>
     <div id="game-ui-container">
+        <div id="turn-indicator"></div>
+        <div id="round-counter">Round: 0</div>
         <div id="timer">00:00</div>
         <button id="menu-button">☰</button>
     </div>

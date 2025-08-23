@@ -168,17 +168,47 @@ export async function generateCharacters(playerNames, storyTitle) {
   }
 }
 
+const getRiddlePrompt = (input) => {
+    const usedRiddlesText = input.usedRiddles.length > 0
+        ? `\n**IMPORTANT:** Do not repeat any riddles from this list:\n- ${input.usedRiddles.join('\n- ')}`
+        : '';
+
+    return `
+You are a master of puzzles and riddles for the RPG “Chronica: Infinite Stories”.
+Your task is to generate a single, clever, and UNIQUE riddle or puzzle.
+The theme of the story is: "${input.storyTitle}". The riddle should fit this theme.
+The user's language is '${input.lang}'.
+${usedRiddlesText}
+
+**Directives:**
+1.  Generate a single riddle. This can be a classic word riddle, a simple math puzzle, or a logic problem.
+2.  Provide exactly three options for the answer.
+3.  One option must be the correct answer. The other two must be plausible but incorrect.
+4.  Return EXACTLY a JSON object with the following structure (no markdown, no extra keys):
+{
+  "acertijo": "The text of the riddle goes here.",
+  "opciones": [
+    {
+      "texto": "A correct answer.",
+      "correcta": true
+    },
+    {
+      "texto": "An incorrect answer.",
+      "correcta": false
+    },
+    {
+      "texto": "Another incorrect answer.",
+      "correcta": false
+    }
+  ]
+}
+`;
+}
+
 // This is the prompt contract that instructs the AI.
 const getPrompt = (input, summary, options = {}) => {
-  let specialInstructions = '';
   if (options.isRiddleTurn) {
-    specialInstructions = `
-**SPECIAL INSTRUCTION: This is a riddle turn!**
-Your main task is to present a riddle or puzzle. The "story" text should describe the puzzle.
-You MUST provide three options: one is the correct answer, and two are incorrect.
-The incorrect options MUST have a health penalty, e.g., \`"stateDelta": {"health": -15}\`.
-The correct answer should have a positive or neutral stateDelta.
-`;
+    return getRiddlePrompt(input);
   }
 
   return `
@@ -187,15 +217,13 @@ Your purpose is to generate fast-paced, engaging, and challenging narrative scen
 The user's chosen language is '${input.lang}'. All output must be in this language.
 The content must be family-friendly.
 
-${specialInstructions}
-
 **Core Directives:**
 1.  **React to the Last Action:** The user's last action was: "${input.lastChoice}". The "story" you generate next MUST be a direct and logical consequence of this action. This is the most important rule.
 2.  **Be Direct and Action-Oriented:** Focus on creating immediate challenges. Introduce enemies, obstacles, and conflicts frequently. The narrative should be concise and to the point, avoiding lengthy descriptions.
 3.  **Introduce Puzzles and Riddles:** Regularly include logical puzzles, riddles, or environmental challenges. When creating a puzzle, ensure some of the provided \`options\` are incorrect attempts at solving it. These incorrect options should result in a negative \`stateDelta\`, such as \`{"health": -10}\`, to represent a penalty.
 4.  **Maintain Consistency:**
     -   **Characters:** Any characters introduced must remain consistent in their appearance, personality, and name.
-    -   **Visuals:** Image prompts must maintain a consistent cinematic, dark fantasy style.
+    -   **Visuals:** Image prompts must maintain a style that is consistent with the story's theme and title.
 
 **Story So Far (Summary):**
 ${summary}
@@ -247,19 +275,32 @@ export async function generateScene(input, options = {}) {
 
     if (!response.ok) {
       console.error(`API request failed with status ${response.status}`);
+      if (options.isRiddleTurn) {
+        return { acertijo: "The API failed. What is the answer to life, the universe, and everything?", opciones: [{texto: "42", correcta: true}, {texto: "24", correcta: false}, {texto: "Potato", correcta: false}] };
+      }
       return fallbackScene;
     }
 
     const result = await response.json();
     const jsonResponseString = result.choices[0].message.content;
-    const scene = JSON.parse(jsonResponseString);
+    const sceneOrRiddle = JSON.parse(jsonResponseString);
 
-    // The credits are part of the prompt, so this is not needed.
-    // scene.credits = "Created by Alberto Arce.";
-    return scene;
+    // If it's a regular scene, ensure it has the credits.
+    if (sceneOrRiddle.story) {
+        sceneOrRiddle.credits = "Created by Alberto Arce.";
+    }
+
+    return sceneOrRiddle;
 
   } catch (error) {
     console.error("An error occurred while fetching or parsing the scene:", error);
+    // If it was a riddle turn, we can't return a scene, so we return a simple riddle fallback.
+    if (options.isRiddleTurn) {
+        return {
+            acertijo: "The API failed. What is the answer to life, the universe, and everything?",
+            opciones: [{texto: "42", correcta: true}, {texto: "24", correcta: false}, {texto: "Potato", correcta: false}]
+        }
+    }
     return fallbackScene;
   }
 }
