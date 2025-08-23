@@ -206,10 +206,50 @@ ${usedRiddlesText}
 `;
 };
 
+const getFirstScenePrompt = (input) => {
+    const plot = input.plot;
+    const characterDescriptions = JSON.stringify(input.players.map(p => ({ name: p.name, race: p.race, class: p.class, description: p.description })));
+
+    return `
+You are the master storyteller for the text-based RPG “Chronica: Infinite Stories”.
+Your task is to write a compelling introductory scene for the story.
+
+**Language:** ${input.lang}
+**Story Title:** "${plot.title}"
+**Overall Plot Summary:** ${plot.summary}
+**Characters:** ${characterDescriptions}
+
+**Directives:**
+1.  **Set the Scene:** Write a compelling opening paragraph in ${input.lang} that establishes the setting and mood, based on the **Overall Plot Summary** and **Story Title**.
+2.  **Introduce the Heroes:** Introduce each character from the **Characters** list, weaving their description into the narrative.
+3.  **Present the Inciting Incident:** Conclude the text by describing the very first situation or challenge the party faces, which should align with the first scene's goal: "${plot.scenes[0].description}".
+4.  **Create Options:** Generate three clear, action-oriented options for the players to choose from as their first move.
+5.  **Return JSON:** Return EXACTLY a JSON object with the specified structure, identical to the standard scene generation.
+{
+  "story": "Your introductory text (2-3 paragraphs).",
+  "options": [
+    {"text": "First action option...", "isRisky": false, "stateDelta": {}},
+    {"text": "Second action option...", "isRisky": false, "stateDelta": {}},
+    {"text": "Third action option...", "isRisky": false, "stateDelta": {}}
+  ],
+  "imagePrompt": "A vivid scene description for the introduction.",
+  "sceneTags": ["introduction", "prologue"],
+  "stateDelta": { "worldState": {} },
+  "ui": { "title": "The Adventure Begins", "toast": "Your story unfolds..." },
+  "credits": "Created by Alberto Arce."
+}
+`;
+};
+
 // This is the prompt contract that instructs the AI.
 const getPrompt = (input, summary, options = {}) => {
   if (options.isRiddleTurn) {
     return getRiddlePrompt(input);
+  }
+
+  // For the very first scene, use a special introductory prompt.
+  if (input.sceneIndex === 0) {
+      return getFirstScenePrompt(input);
   }
 
     const currentSceneGoal = input.plot?.scenes[input.sceneIndex]?.description || "The story continues, with the heroes charting their own path.";
