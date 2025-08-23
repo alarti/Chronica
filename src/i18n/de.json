@@ -1,0 +1,22 @@
+{
+  "scene": {
+    "story": "Du erwachst in einer schwach beleuchteten Kammer, die Luft ist dick vom Geruch von Staub und altem Stein. Eine einzelne Fackel flackert an einer nahen Wand und wirft lange Schatten, die wie Phantome tanzen. Du erinnerst dich nicht, wie du hierher gekommen bist. Drei Wege liegen vor dir: eine schwere Eichentür, eine enge Steintreppe, die nach unten führt, und ein kleiner, dunkler Spalt in der Wand.",
+    "options": [
+      "Versuchen, die schwere Eichentür zu öffnen.",
+      "Die enge Steintreppe hinabsteigen.",
+      "Den dunklen Spalt untersuchen."
+    ],
+    "imagePrompt": "Eine geheimnisvolle, von einer Fackel beleuchtete Steinkammer mit einer einzigen flackernden Fackel an der Wand, die drei mögliche Wege enthüllt: eine große Holztür, eine dunkle Treppe und ein schmaler Riss in der Wand.",
+    "ui": {
+      "title": "Das Erwachen",
+      "toast": "Deine Geschichte beginnt."
+    }
+  },
+  "start_screen": {
+    "title": "Chronica: Unendliche Geschichten",
+    "new_story": "Neue Geschichte Beginnen",
+    "load_story": "Geschichte Laden",
+    "saved_stories": "Gespeicherte Geschichten",
+    "no_saved_stories": "Keine gespeicherten Geschichten gefunden."
+  }
+}

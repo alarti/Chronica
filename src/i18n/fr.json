@@ -1,0 +1,22 @@
+{
+  "scene": {
+    "story": "Vous vous réveillez dans une chambre faiblement éclairée, l'air épais sentant la poussière et la vieille pierre. Une seule torche vacille sur un mur voisin, projetant de longues ombres qui dansent comme des fantômes. Vous ne vous souvenez pas comment vous êtes arrivé ici. Trois chemins s'offrent à vous : une lourde porte en chêne, un étroit escalier en pierre descendant, et une petite crevasse sombre dans le mur.",
+    "options": [
+      "Essayer d'ouvrir la lourde porte en chêne.",
+      "Descendre l'étroit escalier en pierre.",
+      "Enquêter sur la crevasse sombre."
+    ],
+    "imagePrompt": "Une mystérieuse chambre en pierre éclairée par une seule torche vacillante sur le mur, révélant trois chemins potentiels : une grande porte en bois, un escalier sombre et une fissure étroite dans le mur.",
+    "ui": {
+      "title": "Le Réveil",
+      "toast": "Votre histoire commence."
+    }
+  },
+  "start_screen": {
+    "title": "Chronica: Histoires Infinies",
+    "new_story": "Commencer une Nouvelle Histoire",
+    "load_story": "Charger une Histoire",
+    "saved_stories": "Histoires Sauvegardées",
+    "no_saved_stories": "Aucune histoire sauvegardée trouvée."
+  }
+}

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>Chronica: Infinite Stories</title>
+</head>
+<body>
+    <div id="start-screen" class="hidden">
+        <h1>Chronica: Infinite Stories</h1>
+        <button id="new-story-btn">Start New Story</button>
+        <button id="load-story-btn">Load Story</button>
+        <div id="saved-stories-container" class="hidden">
+            <h3>Saved Stories</h3>
+            <ul id="saved-stories-list"></ul>
+        </div>
+    </div>
+
+    <div id="language-selector">
+        <h2>Select Your Language</h2>
+        <div class="flags">
+            <button class="flag-button" data-lang="en"><img src="https://flagcdn.com/w80/gb.png" alt="English"></button>
+            <button class="flag-button" data-lang="es"><img src="https://flagcdn.com/w80/es.png" alt="Español"></button>
+            <button class="flag-button" data-lang="fr"><img src="https://flagcdn.com/w80/fr.png" alt="Français"></button>
+            <button class="flag-button" data-lang="de"><img src="https://flagcdn.com/w80/de.png" alt="Deutsch"></button>
+            <button class="flag-button" data-lang="zh"><img src="https://flagcdn.com/w80/cn.png" alt="中文"></button>
+        </div>
+    </div>
+
+    <div id="game-ui-container">
+        <div id="timer">00:00</div>
+        <button id="menu-button">☰</button>
+    </div>
+
+    <div id="side-panel" class="hidden">
+        <h3>Stats</h3>
+        <!-- Stats will be rendered here -->
+    </div>
+
+    <div id="dice-roll-modal" class="hidden">
+        <img src="https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExb3BqZ2hjaGZpZ3gyYndqZWF4YjRma2ZlZGQ0Z2VjZzBqYmJ6d3BocyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l44QzsD1BZm2yJvDa/giphy.gif" alt="Dice rolling...">
+        <div id="dice-result"></div>
+    </div>
+
+    <div id="new-story-dialog" class="hidden">
+        <h3>Name Your New Saga</h3>
+        <input type="text" id="new-story-title-input" placeholder="e.g., The Quest for the Lost Amulet">
+        <button id="new-story-submit-btn">Begin</button>
+    </div>
+
+    <div id="app" style="display: none;"></div>
+    <script type="module" src="src/main.js"></script>
+</body>
+</html>
