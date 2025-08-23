@@ -46,23 +46,37 @@ let currentStoryId = null;
 function applyStateDelta(delta) {
   if (!delta) return;
 
-  // Apply numeric changes (health, mana, risk)
-  for (const key of ['health', 'mana', 'risk']) {
-    if (typeof delta[key] === 'number') {
-      gameState.sessionState[key] = (gameState.sessionState[key] || 0) + delta[key];
+  const currentPlayer = gameState.players[gameState.turn];
+
+  // Apply player-specific changes (health, mana)
+  for (const key of ['health', 'mana']) {
+    if (typeof delta[key] === 'number' && currentPlayer) {
+      currentPlayer[key] = (currentPlayer[key] || 0) + delta[key];
     }
   }
-  // Clamp values
-  if (gameState.sessionState.health < 0) gameState.sessionState.health = 0;
-  if (gameState.sessionState.health > 100) gameState.sessionState.health = 100;
-  // ... other clamps as needed
 
-  // Apply inventory changes
+  // Clamp player values
+  if (currentPlayer) {
+    if (currentPlayer.health < 0) currentPlayer.health = 0;
+    if (currentPlayer.health > 100) currentPlayer.health = 100;
+    if (currentPlayer.mana < 0) currentPlayer.mana = 0;
+    if (currentPlayer.mana > 100) currentPlayer.mana = 100;
+  }
+
+  // Apply party-wide changes (risk)
+  if (typeof delta.risk === 'number') {
+      gameState.risk = (gameState.risk || 0) + delta.risk;
+      if (gameState.risk < 0) gameState.risk = 0;
+      if (gameState.risk > 100) gameState.risk = 100;
+  }
+
+  // Apply inventory changes (shared)
   if (delta.inventory) {
+    if (!gameState.inventory) gameState.inventory = {};
     for (const [item, quantity] of Object.entries(delta.inventory)) {
-      gameState.sessionState.inventory[item] = (gameState.sessionState.inventory[item] || 0) + quantity;
-      if (gameState.sessionState.inventory[item] <= 0) {
-        delete gameState.sessionState.inventory[item];
+      gameState.inventory[item] = (gameState.inventory[item] || 0) + quantity;
+      if (gameState.inventory[item] <= 0) {
+        delete gameState.inventory[item];
       }
     }
   }
@@ -172,15 +186,9 @@ function endGame(reason) {
     endScreen.querySelector('h2').textContent = "Time's Up!";
   }
 
+  // Clear the final stats container for now, as its logic will be more complex
   const finalStatsContainer = document.getElementById('final-stats');
-  if (finalStatsContainer && gameState.sessionState) {
-    const { health, mana, risk } = gameState.sessionState;
-    finalStatsContainer.innerHTML = `
-            <p>Final Health: ${health}</p>
-            <p>Final Mana: ${mana}</p>
-            <p>Final Risk: ${risk}</p>
-        `;
-  }
+  finalStatsContainer.innerHTML = '';
 
   showScreen('end-screen');
 
@@ -230,31 +238,45 @@ function startTimer(durationInMinutes = 0) {
 
 function renderSidePanel() {
   const panel = document.getElementById('side-panel');
-  if (!panel || !gameState.sessionState) return;
+  if (!panel || !gameState.players) return;
 
-  const { health, mana, risk, inventory } = gameState.sessionState;
+  let playerStatsHtml = gameState.players.map(player => {
+    if (!player.isAlive) {
+        return `
+        <div class="player-stats dead">
+            <h4>${player.name} (Defeated)</h4>
+        </div>`;
+    }
+    return `
+    <div class="player-stats">
+        <h4>${player.name}</h4>
+        <div class="stat-bar-container">
+          <label>Health</label>
+          <div class="stat-bar health-bar" style="width: ${player.health}%;"></div>
+          <span>${player.health}/100</span>
+        </div>
+        <div class="stat-bar-container">
+          <label>Mana</label>
+          <div class="stat-bar mana-bar" style="width: ${player.mana}%;"></div>
+          <span>${player.mana}/100</span>
+        </div>
+    </div>
+  `}).join('');
 
-  const inventoryItems = Object.entries(inventory).map(([item, quantity]) => `<li>${item}: ${quantity}</li>`).join('');
+  const inventoryItems = Object.entries(gameState.inventory || {}).map(([item, quantity]) => `<li>${item}: ${quantity}</li>`).join('');
 
   panel.innerHTML = `
-    <h3>Stats</h3>
-    <div class="stat-bar-container">
-      <label>Health</label>
-      <div class="stat-bar health-bar" style="width: ${health}%;"></div>
-      <span>${health}/100</span>
-    </div>
-    <div class="stat-bar-container">
-      <label>Mana</label>
-      <div class="stat-bar mana-bar" style="width: ${mana}%;"></div>
-      <span>${mana}/100</span>
-    </div>
-    <div class="stat-bar-container">
-      <label>Risk</label>
-      <div class="stat-bar risk-bar" style="width: ${risk}%;"></div>
-      <span>${risk}/100</span>
-    </div>
-    <h4>Inventory</h4>
+    <h3>Party Stats</h3>
+    ${playerStatsHtml}
+    <hr>
+    <h4>Shared Inventory</h4>
     <ul>${inventoryItems || '<li>Empty</li>'}</ul>
+    <hr>
+    <h4>Risk Level</h4>
+    <div class="stat-bar-container">
+      <div class="stat-bar risk-bar" style="width: ${gameState.risk}%;"></div>
+      <span>${gameState.risk}/100</span>
+    </div>
   `;
 }
 
@@ -362,12 +384,13 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
   applyStateDelta(stateDelta);
   renderSidePanel();
 
-  gameState.sessionState.turn = (gameState.sessionState.turn || 0) + 1;
+  // Simple turn progression. This will be more complex later.
+  gameState.turn = (gameState.turn + 1) % gameState.players.length;
   gameState.lastChoice = choice;
 
   // Save the event that just concluded
   await saveEvent(currentStoryId, {
-    turn: gameState.sessionState.turn,
+    turn: gameState.turn, // Save the turn number
     choice: choice,
     stateDelta: stateDelta,
     story: storyText,
@@ -375,10 +398,10 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
   });
 
   const history = await getHistory(currentStoryId, 5);
-  gameState.sessionState.history = history;
+  gameState.history = history; // Save history at the top level
 
-  if (gameState.sessionState.risk >= 100) {
-    gameState.sessionState.risk = 0;
+  if (gameState.risk >= 100) {
+    gameState.risk = 0;
     handleRiskyChoice("A forced consequence of mounting risk!", {});
     return;
   }
@@ -392,8 +415,8 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
   }
 }
 
-async function startGame(storyId, lang, timeLimit = 0) {
-  console.log(`Starting game for story ${storyId} with lang: ${lang}, time: ${timeLimit}min`);
+async function startGame(storyId, lang, timeLimit = 0, playerNames = ['Player']) {
+  console.log(`Starting game for story ${storyId} with lang: ${lang}, time: ${timeLimit}min, players: ${playerNames.join(', ')}`);
   currentStoryId = storyId;
   startTimer(timeLimit);
   showScreen('app');
@@ -409,16 +432,29 @@ async function startGame(storyId, lang, timeLimit = 0) {
     };
   }
 
+  const players = playerNames.map(name => ({
+    name: name,
+    health: 100,
+    mana: 100,
+    isAlive: true,
+  }));
+
   gameState = {
     lang: lang,
-    playerProfile: { name: 'Player', lang: lang },
-    sessionState: { health: 100, mana: 100, risk: 0, inventory: {}, flags: {}, worldState: {}, turn: 0 },
+    players: players,
+    turn: 0, // Index for the current player
+    risk: 0,
+    inventory: {},
+    flags: {},
+    worldState: {},
     lastChoice: null
   };
 
   const history = await getHistory(currentStoryId, Infinity);
   if (history.length > 0) {
     console.log('Reconstructing state from history...');
+    // Note: applyStateDelta will need to be multiplayer-aware.
+    // For now, this might not work as expected until that is refactored.
     history.reverse().forEach(event => applyStateDelta(event.stateDelta));
   }
 
@@ -479,10 +515,9 @@ async function handleNewStory(lang) {
       const playerNames = Array.from(playerNameInputs).map(input => input.value || input.placeholder);
       console.log("Starting multiplayer game with players:", playerNames);
 
-      // For now, we'll still start a single player game.
-      // The playerNames array will be used in the next phase.
+      // The playerNames array will be used in the next phase for AI character generation.
       currentStoryId = await createNewStory(title);
-      startGame(currentStoryId, lang, parseInt(timeLimit, 10));
+      startGame(currentStoryId, lang, parseInt(timeLimit, 10), playerNames);
     }
   };
 }
@@ -500,8 +535,8 @@ async function handleLoadStory(lang) {
       li.textContent = `${story.title} (Last played: ${new Date(story.last_played).toLocaleString()})`;
       li.dataset.id = story.id;
       li.addEventListener('click', () => {
-        // Time limit is not applicable for loaded stories
-        startGame(story.id, lang, 0);
+        // Loaded stories are single player, no time limit
+        startGame(story.id, lang, 0, ['Player']);
       });
       list.appendChild(li);
     });
