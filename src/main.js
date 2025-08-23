@@ -262,7 +262,7 @@ async function showStartScreen(lang) {
 
   // Fetch i18n data to translate the start screen
   try {
-    const response = await fetch(`./i18n/${lang}.json`);
+    const response = await fetch(`src/i18n/${lang}.json`);
     const i18n = await response.json();
     const texts = i18n.start_screen;
 
@@ -283,11 +283,21 @@ async function showStartScreen(lang) {
 }
 
 async function handleNewStory(lang) {
-  const title = prompt("Enter a title for your new story:", "My Epic Adventure");
-  if (title) {
-    currentStoryId = await createNewStory(title);
-    startGame(currentStoryId, lang);
-  }
+  const dialog = document.getElementById('new-story-dialog');
+  const input = document.getElementById('new-story-title-input');
+  const submitBtn = document.getElementById('new-story-submit-btn');
+
+  dialog.classList.remove('hidden');
+  document.getElementById('start-screen').classList.add('hidden');
+
+  submitBtn.onclick = async () => {
+    const title = input.value;
+    if (title.trim()) {
+      dialog.classList.add('hidden');
+      currentStoryId = await createNewStory(title);
+      startGame(currentStoryId, lang);
+    }
+  };
 }
 
 async function handleLoadStory(lang) {
