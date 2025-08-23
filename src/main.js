@@ -24,6 +24,20 @@ function renderError(message) {
 
 // --- Global Game State ---
 let gameState = {};
+let timerInterval;
+
+function startTimer() {
+  const timerElement = document.getElementById('timer');
+  if (!timerElement) return;
+
+  let seconds = 0;
+  timerInterval = setInterval(() => {
+    seconds++;
+    const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const secs = (seconds % 60).toString().padStart(2, '0');
+    timerElement.textContent = `${mins}:${secs}`;
+  }, 1000);
+}
 
 function renderScene(scene) {
   const appDiv = document.getElementById('app');
@@ -32,7 +46,9 @@ function renderScene(scene) {
     return;
   }
 
-  const optionsHtml = scene.options.map((option, index) => `<li><button class="option-button" data-index="${index}">${option}</button></li>`).join('');
+  const optionsHtml = scene.options.map((option, index) => {
+    return `<li><button class="option-button" data-index="${index}" data-is-risky="${option.isRisky || false}">${option.text}</button></li>`;
+  }).join('');
 
   let backgroundStyle = '';
   const imageUrlBase = 'https://image.pollinations.ai/prompt';
@@ -44,9 +60,9 @@ function renderScene(scene) {
   appDiv.innerHTML = `
     <div class="scene-background" ${backgroundStyle}></div>
     <div class="scene-overlay"></div>
-    <div class="text-container">
-        <h2>${scene.ui.title}</h2>
-        <p id="story-text"></p>
+    <div id="timer">00:00</div>
+
+    <div id="subtitle-container">
         <div id="options-container">
             <ul>${optionsHtml}</ul>
             <div id="custom-option-container">
@@ -54,7 +70,7 @@ function renderScene(scene) {
                 <button id="custom-option-submit">Submit</button>
             </div>
         </div>
-        <p><small><em>${scene.credits}</em></small></p>
+        <p id="story-text"></p>
     </div>
   `;
 
@@ -67,13 +83,43 @@ function renderScene(scene) {
     });
   }
 
+async function handleRiskyChoice(actionText, stateDelta) {
+  const modal = document.getElementById('dice-roll-modal');
+  const resultDiv = document.getElementById('dice-result');
+
+  modal.classList.remove('hidden');
+  resultDiv.classList.remove('visible');
+  resultDiv.innerText = '';
+
+  // Simulate roll time
+  await new Promise(resolve => setTimeout(resolve, 2500));
+
+  const roll = Math.floor(Math.random() * 20) + 1;
+  resultDiv.innerText = roll;
+  resultDiv.classList.add('visible');
+
+  // Time for player to see the result
+  await new Promise(resolve => setTimeout(resolve, 2000));
+
+  modal.classList.add('hidden');
+
+  const choice = { action: actionText, roll: roll };
+  advanceToNextScene(choice, stateDelta);
+}
+
   // Add event listeners after a short delay to ensure elements are in the DOM
   setTimeout(() => {
     // Event listeners for the generated option buttons
     document.querySelectorAll('.option-button').forEach(button => {
       button.addEventListener('click', (event) => {
         const selectedOptionText = event.target.innerText;
-        advanceToNextScene(selectedOptionText, scene.stateDelta);
+        const isRisky = event.target.dataset.isRisky === 'true';
+
+        if (isRisky) {
+          handleRiskyChoice(selectedOptionText, scene.stateDelta);
+        } else {
+          advanceToNextScene(selectedOptionText, scene.stateDelta);
+        }
       });
     });
 
@@ -123,6 +169,7 @@ async function advanceToNextScene(choice, stateDelta) {
 
 function startGame(lang) {
   console.log(`Starting game with language: ${lang}`);
+  startTimer();
   const appDiv = document.getElementById('app');
   appDiv.style.display = 'block';
 

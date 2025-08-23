@@ -101,25 +101,32 @@ body {
   z-index: 2;
 }
 
-.text-container {
-  position: relative;
+#timer {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 4;
+  font-family: var(--font-primary);
+  font-size: 1.5rem;
+  text-shadow: 2px 2px 4px var(--color-text-shadow);
+}
+
+#subtitle-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 2rem;
   z-index: 3;
   color: var(--color-text-light);
   text-shadow: 2px 2px 4px var(--color-text-shadow);
   text-align: center;
-  padding: 2rem;
-  max-width: 800px;
-}
-
-.text-container h2 {
-  font-family: var(--font-primary);
-  font-size: 2.5rem;
-  margin-bottom: 1rem;
 }
 
 #story-text {
-  font-size: 1.2rem;
+  font-size: 1.5rem;
   line-height: 1.6;
+  margin-bottom: 2rem;
   min-height: 100px; /* Reserve space for typewriter */
 }
 
@@ -188,4 +195,43 @@ body {
   100% {
     transform: scale(1) translate(0, 0);
   }
+}
+
+/* Dice Roll Modal */
+#dice-roll-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  transition: opacity 0.3s ease;
+}
+
+#dice-roll-modal.hidden {
+  display: none;
+}
+
+#dice-roll-modal img {
+  max-width: 200px;
+  border-radius: 10px;
+}
+
+#dice-result {
+  font-family: var(--font-primary);
+  font-size: 4rem;
+  color: #fff;
+  text-shadow: 0 0 15px #fff;
+  margin-top: 1rem;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+#dice-result.visible {
+  opacity: 1;
 }

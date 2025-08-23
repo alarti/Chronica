@@ -34,7 +34,12 @@ const fallbackScene = {
 // This is the prompt contract that instructs the AI.
 const getPrompt = (input) => {
   const history = input.sessionState.history || [];
-  const historySummary = history.map(event => `Turn ${event.turn}: Player chose '${event.choice}'`).join('\\n');
+  const historySummary = history.map(event => {
+    if (typeof event.choice === 'object' && event.choice.action && event.choice.roll) {
+      return `Turn ${event.turn}: Player attempted '${event.choice.action}' and rolled a ${event.choice.roll}.`;
+    }
+    return `Turn ${event.turn}: Player chose '${event.choice}'`;
+  }).join('\\n');
 
   return `
 You are the narrative engine for a game called “Chronica: Infinite Stories” by Alberto Arce.
@@ -57,7 +62,11 @@ Your task is to generate the NEXT scene, continuing from the history.
 Return EXACTLY a JSON object with the following structure (no markdown, no extra keys):
 {
   "story": "Up to 200 words of narrative in '${input.lang}'.",
-  "options": ["Option 1 in '${input.lang}'...", "Option 2...", "Option 3..."],
+  "options": [
+    {"text": "A safe option in '${input.lang}'...", "isRisky": false},
+    {"text": "A risky option that requires a dice roll...", "isRisky": true},
+    {"text": "Another safe option...", "isRisky": false}
+  ],
   "imagePrompt": "A short, vivid scene description for illustration, following the style rules.",
   "sceneTags": ["comma-free", "single", "word", "tags"],
   "ui": { "title": "Short scene title in '${input.lang}'", "toast": "1 short line reacting to last choice in '${input.lang}'" },
