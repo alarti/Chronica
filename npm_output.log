@@ -2,8 +2,9 @@
 > chronica-infinite-stories@0.1.0 dev
 > vite
 
+Port 5173 is in use, trying another one...
 
-  VITE v5.4.19  ready in 484 ms
+  VITE v5.4.19  ready in 594 ms
 
-  ➜  Local:   http://localhost:5173/
+  ➜  Local:   http://localhost:5174/
   ➜  Network: use --host to expose
