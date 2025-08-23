@@ -280,6 +280,13 @@ body {
   height: 40px;
   border-radius: 5px;
   text-shadow: 2px 2px 4px var(--color-text-shadow);
+  position: relative;
+  transition: right 0.3s ease-in-out;
+  right: 0;
+}
+
+#menu-button.panel-open {
+  right: 300px;
 }
 
 #side-panel {

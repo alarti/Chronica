@@ -257,6 +257,7 @@ async function startGame(storyId, lang) {
     menuButton.onclick = () => {
       renderSidePanel();
       sidePanel.classList.toggle('hidden');
+      menuButton.classList.toggle('panel-open');
     };
   }
 
