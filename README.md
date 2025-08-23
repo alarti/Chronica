@@ -2,6 +2,8 @@
 
 Chronica: Infinite Stories is a multilingual, AI‑driven narrative web RPG. Each scene is generated dynamically (text + artwork) and stored per player.  
 Created by **Alberto Arce**.
+<img width="781" height="450" alt="image" src="https://github.com/user-attachments/assets/97d3f4fb-fe3c-4b2a-966f-7b220aac84cf" />
+
 
 ## 🌐 Multilingual
 - Languages: English (EN), Español (ES), Français (FR), Deutsch (DE), 中文 (ZH)
