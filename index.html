@@ -40,27 +40,34 @@
     <div id="fixed-logo-icon">
         <img src="src/asset/logo.png" alt="Chronica Icon">
     </div>
-    <div id="game-ui-container">
-        <div id="turn-indicator"></div>
-        <div id="round-counter">Round: 0</div>
-        <div id="timer">00:00</div>
-        <div id="progress-container">
-            <span>Story Progress:</span>
-            <div id="progress-bar">
-                <div id="progress-bar-fill"></div>
+    <div id="game-container">
+        <div id="game-ui-container">
+            <div id="turn-indicator"></div>
+            <div id="round-counter">Round: 0</div>
+            <div id="timer">00:00</div>
+            <div id="progress-container">
+                <span>Story Progress:</span>
+                <div id="progress-bar">
+                    <div id="progress-bar-fill"></div>
+                </div>
+                <span id="progress-percentage">0%</span>
             </div>
-            <span id="progress-percentage">0%</span>
+            <button id="menu-button">☰</button>
         </div>
-        <button id="menu-button">☰</button>
+
+        <div id="side-panel" class="hidden">
+            <h3>Stats</h3>
+            <!-- Stats will be rendered here -->
+        </div>
+
+        <div id="app">
+            <!-- Game content is rendered here -->
+        </div>
     </div>
 
-    <div id="side-panel" class="hidden">
-        <h3>Stats</h3>
-        <!-- Stats will be rendered here -->
-    </div>
 
     <div id="dice-roll-modal" class="hidden">
-        <!--<img src="https://media1.giphy.com/media/KKnYitBECKgAVjIKph/giphy.gif" alt="Dice rolling...">-->
+        <!--<img src="https/media1.giphy.com/media/KKnYitBECKgAVjIKph/giphy.gif" alt="Dice rolling...">-->
         <img src="src/asset/dice20.gif" alt="Dice rolling...">
         <div id="dice-result"></div>
     </div>
@@ -100,8 +107,6 @@
         </div>
         <button id="new-story-submit-btn">Begin</button>
     </div>
-
-    <div id="app"></div>
 
     <div id="riddle-feedback" class="hidden"></div>
 
