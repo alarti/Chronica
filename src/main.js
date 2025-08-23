@@ -175,6 +175,12 @@ async function generatePDF() {
             }
 
             if (event.story) {
+                if (event.isEpilogue) {
+                    doc.setFont(undefined, 'bold');
+                    doc.text("Epilogue", margin, y);
+                    y += 7;
+                    doc.setFont(undefined, 'normal');
+                }
                 const storyLines = doc.splitTextToSize(event.story, 180);
                 doc.text(storyLines, margin, y);
                 y += (storyLines.length * 7);
@@ -230,6 +236,12 @@ async function endGame(reason) {
   };
   const epilogue = await generateEnding(finalState, gameState.lang);
   finalStatsContainer.innerHTML = `<p>${epilogue}</p>`;
+
+    // Save the epilogue as a final event
+    await saveEvent(currentStoryId, {
+        isEpilogue: true,
+        story: epilogue
+    });
 
   document.getElementById('restart-btn').onclick = () => {
     window.location.reload();
@@ -332,7 +344,7 @@ function renderSidePanel() {
           <span>${player.mana}/100</span>
         </div>
     </div>
-  `}).join('');
+  `;}).join('');
 
   const inventoryItems = Object.entries(gameState.inventory || {}).map(([item, quantity]) => `<li>${item}: ${quantity}</li>`).join('');
 

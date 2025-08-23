@@ -416,7 +416,7 @@ body {
 
 /* Dice Roll Modal */
 #riddle-feedback {
-    position: absolute;
+    position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
@@ -425,7 +425,7 @@ body {
     font-size: 2.5em;
     font-weight: bold;
     color: white;
-    z-index: 100;
+    z-index: 8000;
     text-shadow: 2px 2px 4px #000000;
 }
 
