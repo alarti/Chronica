@@ -213,9 +213,9 @@ function renderScene(scene) {
         const isRisky = event.target.dataset.isRisky === 'true';
 
         if (isRisky) {
-          handleRiskyChoice(selectedOptionText, scene.stateDelta, scene.story);
+          handleRiskyChoice(selectedOptionText, scene.stateDelta, scene.story, scene.imagePrompt);
         } else {
-          advanceToNextScene(selectedOptionText, scene.stateDelta, scene.story);
+          advanceToNextScene(selectedOptionText, scene.stateDelta, scene.story, scene.imagePrompt);
         }
       });
     });
@@ -227,14 +227,14 @@ function renderScene(scene) {
       customSubmit.addEventListener('click', () => {
         const customChoice = customInput.value;
         if (customChoice.trim() !== '') {
-          advanceToNextScene(customChoice, scene.stateDelta, scene.story);
+          advanceToNextScene(customChoice, scene.stateDelta, scene.story, scene.imagePrompt);
         }
       });
     }
   }, 0);
 }
 
-async function handleRiskyChoice(actionText, stateDelta, storyText) {
+async function handleRiskyChoice(actionText, stateDelta, storyText, imagePrompt) {
   const modal = document.getElementById('dice-roll-modal');
   const resultDiv = document.getElementById('dice-result');
 
@@ -255,10 +255,10 @@ async function handleRiskyChoice(actionText, stateDelta, storyText) {
   modal.classList.add('hidden');
 
   const choice = { action: actionText, roll: roll };
-  advanceToNextScene(choice, stateDelta, storyText);
+  advanceToNextScene(choice, stateDelta, storyText, imagePrompt);
 }
 
-async function advanceToNextScene(choice, stateDelta, storyText = '') {
+async function advanceToNextScene(choice, stateDelta, storyText = '', imagePrompt = '') {
   console.log(`Player chose: ${choice}`);
   document.getElementById('app').innerHTML = '<p>Loading next scene...</p>';
 
@@ -273,7 +273,8 @@ async function advanceToNextScene(choice, stateDelta, storyText = '') {
     turn: gameState.sessionState.turn,
     choice: choice,
     stateDelta: stateDelta,
-    story: storyText
+    story: storyText,
+    imagePrompt: imagePrompt
   });
 
   const history = await getHistory(currentStoryId, 5);
