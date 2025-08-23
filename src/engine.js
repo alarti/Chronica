@@ -60,27 +60,28 @@ async function getSummary(history) {
   }
 }
 
-const getEndingPrompt = (finalState) => {
+const getEndingPrompt = (finalState, lang) => {
   return `
 You are the epilogue writer for a text-based RPG called “Chronica: Infinite Stories”.
-Your task is to write a short, flavorful, and conclusive final paragraph for the adventure based on the final state of the game.
+Your task is to write a short, flavorful, and conclusive final paragraph for the adventure in the specified language.
 
+**Language:** ${lang}
 **Game Title:** ${finalState.storyTitle}
 **Game Over Reason:** ${finalState.reason}
 **Final Party State:** ${JSON.stringify(finalState.players.map(p => ({ name: p.name, health: p.health, isAlive: p.isAlive })))}
 
 **Directives:**
-1.  Write a single, compelling paragraph that serves as an epilogue.
+1.  Write a single, compelling paragraph in ${lang} that serves as an epilogue.
 2.  If the reason is "time_up", describe how the party was overwhelmed or ran out of time.
 3.  If the reason is "party_defeated", describe their noble (or ignoble) final stand.
 4.  Reference the final state of the players. If some survived, mention them. If all perished, reflect on their legacy.
 5.  The tone should match the game's title and theme.
-6.  Do not output JSON. Output only the raw text of the epilogue paragraph.
+6.  Do not output JSON. Output only the raw text of the epilogue paragraph in ${lang}.
 `;
 };
 
-export async function generateEnding(finalState) {
-  const prompt = getEndingPrompt(finalState);
+export async function generateEnding(finalState, lang) {
+  const prompt = getEndingPrompt(finalState, lang);
   const payload = { model: 'openai', messages: [{ role: 'user', content: prompt }] };
   const apiUrl = 'https://text.pollinations.ai/openai';
 
@@ -203,13 +204,55 @@ ${usedRiddlesText}
   ]
 }
 `;
+};
+
+const getFirstScenePrompt = (input) => {
+    const plot = input.plot;
+    const characterDescriptions = JSON.stringify(input.players.map(p => ({ name: p.name, race: p.race, class: p.class, description: p.description })));
+
+    return `
+You are the master storyteller for the text-based RPG “Chronica: Infinite Stories”.
+Your task is to write a compelling introductory scene for the story.
+
+**Language:** ${input.lang}
+**Story Title:** "${plot.title}"
+**Overall Plot Summary:** ${plot.summary}
+**Characters:** ${characterDescriptions}
+
+**Directives:**
+1.  **Set the Scene:** Write a compelling opening paragraph in ${input.lang} that establishes the setting and mood, based on the **Overall Plot Summary** and **Story Title**.
+2.  **Introduce the Heroes:** Introduce each character from the **Characters** list, weaving their description into the narrative.
+3.  **Present the Inciting Incident:** Conclude the text by describing the very first situation or challenge the party faces, which should align with the first scene's goal: "${plot.scenes[0].description}".
+4.  **Create Options:** Generate three clear, action-oriented options for the players to choose from as their first move.
+5.  **Return JSON:** Return EXACTLY a JSON object with the specified structure, identical to the standard scene generation.
+{
+  "story": "Your introductory text (2-3 paragraphs).",
+  "options": [
+    {"text": "First action option...", "isRisky": false, "stateDelta": {}},
+    {"text": "Second action option...", "isRisky": false, "stateDelta": {}},
+    {"text": "Third action option...", "isRisky": false, "stateDelta": {}}
+  ],
+  "imagePrompt": "A vivid scene description for the introduction.",
+  "sceneTags": ["introduction", "prologue"],
+  "stateDelta": { "worldState": {} },
+  "ui": { "title": "The Adventure Begins", "toast": "Your story unfolds..." },
+  "credits": "Created by Alberto Arce."
 }
+`;
+};
 
 // This is the prompt contract that instructs the AI.
 const getPrompt = (input, summary, options = {}) => {
   if (options.isRiddleTurn) {
     return getRiddlePrompt(input);
   }
+
+  // For the very first scene, use a special introductory prompt.
+  if (input.sceneIndex === 0) {
+      return getFirstScenePrompt(input);
+  }
+
+    const currentSceneGoal = input.plot?.scenes[input.sceneIndex]?.description || "The story continues, with the heroes charting their own path.";
 
   return `
 You are the narrative engine for a game called “Chronica: Infinite Stories” by Alberto Arce.
@@ -232,9 +275,12 @@ ${summary}
 - Players: ${JSON.stringify(input.players.map(p => ({name: p.name, race: p.race, class: p.class, isAlive: p.isAlive})))}
 - Current Turn: It is ${input.players[input.turn].name}'s turn to act.
 - Last Choice: ${input.lastChoice || 'None'}
-- Story Theme: The story is titled "${input.storyTitle}". The entire narrative, including the setting, characters, and tone, MUST strictly adhere to the theme of this title. For example, if the title is "Galactic Kitchen Wars", the story should be a humorous sci-fi adventure about sentient kitchen utensils. If the title is "The Last Detective", it should be a grim noir mystery. Be creative and adapt the genre to the title.
+- Story Theme: The story is titled "${input.storyTitle}". The entire narrative must strictly adhere to this theme.
+- Known World State: Use these details for consistency. ${JSON.stringify(input.worldState)}
+- **Current Scene Goal:** The current objective for the heroes is: "${currentSceneGoal}". Your generated scene must be a step towards accomplishing this goal. As the story progresses (higher scene index out of total scenes), the narrative should build towards a climax and conclusion based on the overall plot.
 
-Your task is to generate the NEXT scene, continuing from the history.
+**Your Task:**
+Generate the NEXT scene that logically follows the "Last Choice" and moves the story towards the "Current Scene Goal". Update the world state with any new characters, locations, or key items.
 Return EXACTLY a JSON object with the following structure (no markdown, no extra keys):
 {
   "story": "A brief, direct narrative (max 80 words) in '${input.lang}'.",
@@ -243,8 +289,11 @@ Return EXACTLY a JSON object with the following structure (no markdown, no extra
     {"text": "A risky option that requires a dice roll...", "isRisky": true, "stateDelta": {"risk": 20, "health": -5}},
     {"text": "A puzzle-solving or investigative option...", "isRisky": false, "stateDelta": {"mana": -5}}
   ],
-  "imagePrompt": "A short, vivid scene description for illustration, following the style rules.",
+  "imagePrompt": "A short, vivid scene description for illustration, using details from the world state.",
   "sceneTags": ["comma-free", "single", "word", "tags"],
+  "stateDelta": {
+    "worldState": { "new_character_name": "description", "new_location_name": "description" }
+  },
   "ui": { "title": "Short scene title in '${input.lang}'", "toast": "1 short line reacting to last choice in '${input.lang}'" },
   "credits": "Created by Alberto Arce."
 }
@@ -299,8 +348,74 @@ export async function generateScene(input, options = {}) {
         return {
             acertijo: "The API failed. What is the answer to life, the universe, and everything?",
             opciones: [{texto: "42", correcta: true}, {texto: "24", correcta: false}, {texto: "Potato", correcta: false}]
-        }
+        };
     }
     return fallbackScene;
   }
+}
+
+const getPlotPrompt = (title, lang) => {
+    return `
+You are a master storyteller for the text-based RPG “Chronica: Infinite Stories”.
+Your task is to generate a complete, original story plot based on a given title.
+The story must have a clear beginning, a rising action, a climax, and a resolution.
+The user's chosen language is '${lang}'. All output must be in this language.
+
+**Story Title:** "${title}"
+
+**Directives:**
+1.  **Overall Summary:** Write a brief, one-paragraph summary of the entire story.
+2.  **Act Structure:** Divide the story into 5 to 10 "scenes".
+3.  **Scene Content:** For each scene, provide a 'title' and a 'description'. The description should set the stage for that part of the story.
+4.  **JSON Format:** Return EXACTLY a JSON object with the following structure (no markdown, no extra keys):
+{
+  "title": "The Full Title of the Story",
+  "summary": "The one-paragraph summary of the story.",
+  "scenes": [
+    {
+      "title": "Scene 1 Title",
+      "description": "A description of what happens in the first scene."
+    },
+    {
+      "title": "Scene 2 Title",
+      "description": "A description of the next part of the story."
+    }
+  ]
+}
+`;
+};
+
+export async function generatePlot(title, lang) {
+    const prompt = getPlotPrompt(title, lang);
+    const payload = { model: 'openai', messages: [{ role: 'user', content: prompt }] };
+    const apiUrl = 'https://text.pollinations.ai/openai';
+
+    try {
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            console.error(`Plot generation API failed with status ${response.status}`);
+            throw new Error('API failed');
+        }
+
+        const result = await response.json();
+        const jsonResponseString = result.choices[0].message.content;
+        return JSON.parse(jsonResponseString);
+
+    } catch (error) {
+        console.error("Failed to generate plot, using fallback:", error);
+        return {
+            title: title,
+            summary: "An unexpected error occurred while trying to generate your story. You find yourself on a generic adventure.",
+            scenes: [
+                { title: "The Beginning", description: "The adventure starts here." },
+                { title: "The Middle", description: "The plot thickens." },
+                { title: "The End", description: "The story concludes." }
+            ]
+        };
+    }
 }
