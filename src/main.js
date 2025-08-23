@@ -233,6 +233,7 @@ async function startGame(storyId, lang) {
   currentStoryId = storyId;
   startTimer();
   document.getElementById('app').style.display = 'flex';
+  document.getElementById('language-selector').classList.add('hidden');
 
   gameState = {
     lang: lang,

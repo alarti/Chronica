@@ -97,7 +97,7 @@ Return EXACTLY a JSON object with the following structure (no markdown, no extra
   "stateDelta": {
     "health": -10,
     "mana": -5,
-    "risk": +10,
+    "risk": 10,
     "inventory": { "Health Potion": -1, "Ancient Scroll": 1 },
     "flags": { "door_unlocked": true }
   },
