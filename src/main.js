@@ -1,5 +1,5 @@
 import { generateScene, generateCharacters, generateEnding } from './engine.js';
-import { initDB, createNewStory, getAllStories, saveEvent, getHistory } from './database.js';
+import { initDB, createNewStory, getAllStories, saveEvent, getHistory, deleteStory } from './database.js';
 
 const SCREENS = ['language-selector', 'start-screen', 'new-story-dialog', 'app', 'end-screen'];
 
@@ -625,18 +625,46 @@ async function handleLoadStory(lang) {
   const list = document.getElementById('saved-stories-list');
   const container = document.getElementById('saved-stories-container');
   list.innerHTML = '';
+
   if (stories.length === 0) {
     list.innerHTML = '<li>No saved stories found.</li>';
   } else {
     stories.forEach(story => {
       const li = document.createElement('li');
-      li.textContent = `${story.title} (Last played: ${new Date(story.last_played).toLocaleString()})`;
-      li.dataset.id = story.id;
-      li.addEventListener('click', () => {
-        // Loaded stories are single player, no time limit, no AI generation
+
+      const titleSpan = document.createElement('span');
+      titleSpan.className = 'story-list-title';
+      titleSpan.textContent = `${story.title} (Last played: ${new Date(story.last_played).toLocaleString()})`;
+      titleSpan.onclick = () => {
         const defaultCharacters = [{ name: 'Player', race: 'Human', class: 'Adventurer', description: 'A returning hero.' }];
         startGame(story.id, lang, 0, defaultCharacters, story.title);
-      });
+      };
+
+      const actionsDiv = document.createElement('div');
+      actionsDiv.className = 'story-list-actions';
+
+      const pdfBtn = document.createElement('button');
+      pdfBtn.textContent = 'PDF';
+      pdfBtn.onclick = async () => {
+        currentStoryId = story.id; // Set the global story ID for PDF generation
+        await generatePDF();
+        currentStoryId = null; // Reset it
+      };
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = 'Delete';
+      deleteBtn.className = 'delete-btn';
+      deleteBtn.onclick = async () => {
+        if (window.confirm(`Are you sure you want to delete "${story.title}"? This cannot be undone.`)) {
+            await deleteStory(story.id);
+            handleLoadStory(lang); // Refresh the list
+        }
+      };
+
+      actionsDiv.appendChild(pdfBtn);
+      actionsDiv.appendChild(deleteBtn);
+      li.appendChild(titleSpan);
+      li.appendChild(actionsDiv);
       list.appendChild(li);
     });
   }

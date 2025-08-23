@@ -44,6 +44,39 @@ export function createNewStory(title) {
   });
 }
 
+export function deleteStory(storyId) {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORIES_STORE, EVENTS_STORE], 'readwrite');
+        const storiesStore = transaction.objectStore(STORIES_STORE);
+        const eventsStore = transaction.objectStore(EVENTS_STORE);
+
+        // 1. Delete the story itself
+        storiesStore.delete(storyId);
+
+        // 2. Delete all associated events
+        const eventsIndex = eventsStore.index('story_id_idx');
+        const eventsRequest = eventsIndex.openCursor(IDBKeyRange.only(storyId));
+
+        eventsRequest.onsuccess = (event) => {
+            const cursor = event.target.result;
+            if (cursor) {
+                cursor.delete();
+                cursor.continue();
+            }
+        };
+
+        transaction.oncomplete = () => {
+            console.log(`Story ${storyId} and all its events have been deleted.`);
+            resolve();
+        };
+
+        transaction.onerror = (event) => {
+            console.error(`Error deleting story ${storyId}:`, event.target.error);
+            reject(event.target.error);
+        };
+    });
+}
+
 export function getAllStories() {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([STORIES_STORE], 'readonly');
