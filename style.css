@@ -514,7 +514,6 @@ body {
   border: 1px solid #fff;
   color: #fff;
   padding: 1rem 2rem;
-  margin-top: 2rem;
   cursor: pointer;
   transition: all 0.3s ease;
 }
@@ -522,4 +521,21 @@ body {
 #end-screen button:hover {
   background-color: #fff;
   color: #000;
+}
+
+.end-screen-buttons {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+#end-screen #download-pdf-btn {
+    background: none;
+    border: 1px solid #2ecc71;
+    color: #2ecc71;
+}
+
+#end-screen #download-pdf-btn:hover {
+    background-color: #2ecc71;
+    color: #fff;
 }

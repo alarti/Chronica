@@ -68,6 +68,101 @@ function applyStateDelta(delta) {
   }
 }
 
+async function getImageAsDataURL(url) {
+    // This function is a bit tricky because of CORS policies on remote servers.
+    // A direct fetch might be blocked. A simple approach is to hope it works,
+    // but a more robust solution might need a CORS proxy if issues arise.
+    try {
+        const response = await fetch(url);
+        if (!response.ok) return null;
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    } catch (error) {
+        console.error(`Failed to fetch image for PDF: ${url}`, error);
+        return null;
+    }
+}
+
+async function generatePDF() {
+    const downloadBtn = document.getElementById('download-pdf-btn');
+    downloadBtn.textContent = 'Generating PDF...';
+    downloadBtn.disabled = true;
+
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const history = await getHistory(currentStoryId, Infinity);
+        const stories = await getAllStories();
+        const storyTitle = stories.find(s => s.id === currentStoryId)?.title || 'My Adventure';
+
+        doc.setFontSize(22);
+        doc.text(storyTitle, 10, 20);
+        doc.setFontSize(12);
+
+        let y = 40;
+        const margin = 10;
+        const pageHeight = doc.internal.pageSize.height;
+
+        history.reverse(); // chronological order
+
+        for (const event of history) {
+            if (y > pageHeight - 20) { // Page break check
+                doc.addPage();
+                y = 20;
+            }
+
+            if (event.imagePrompt) {
+                const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(event.imagePrompt)}`;
+                const imageData = await getImageAsDataURL(imageUrl);
+                if (imageData) {
+                    const imgWidth = 150;
+                    const imgHeight = (imgWidth / 16) * 9;
+                    if (y > pageHeight - (imgHeight + 10)) {
+                        doc.addPage();
+                        y = 20;
+                    }
+                    doc.addImage(imageData, 'JPEG', margin, y, imgWidth, imgHeight);
+                    y += imgHeight + 10;
+                }
+            }
+
+            if (event.story) {
+                const storyLines = doc.splitTextToSize(event.story, 180);
+                doc.text(storyLines, margin, y);
+                y += (storyLines.length * 7);
+            }
+
+            if (event.choice) {
+                let choiceText = '> ';
+                if (typeof event.choice === 'object' && event.choice.action) {
+                    choiceText += `${event.choice.action} (Rolled: ${event.choice.roll})`;
+                } else {
+                    choiceText += event.choice;
+                }
+                doc.setFont(undefined, 'italic');
+                doc.text(choiceText, margin, y);
+                y += 7;
+                doc.setFont(undefined, 'normal');
+            }
+
+            y += 10; // Spacing
+        }
+
+        doc.save(`${storyTitle.replace(/\s+/g, '_')}.pdf`);
+    } catch (err) {
+        console.error("Failed to generate PDF", err);
+        alert("Could not generate PDF. See console for details.");
+    } finally {
+        downloadBtn.textContent = 'Download Story as PDF';
+        downloadBtn.disabled = false;
+    }
+}
+
 function endGame(reason) {
   console.log(`Game Over: ${reason}`);
   clearInterval(timerInterval);
@@ -92,6 +187,8 @@ function endGame(reason) {
   document.getElementById('restart-btn').onclick = () => {
     window.location.reload();
   };
+
+  document.getElementById('download-pdf-btn').onclick = generatePDF;
 }
 
 function startTimer(durationInMinutes = 0) {
