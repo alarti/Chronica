@@ -427,6 +427,14 @@ body {
     color: white;
     z-index: 8000;
     text-shadow: 2px 2px 4px #000000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.5s ease-in-out, visibility 0.5s ease-in-out;
+}
+
+#riddle-feedback.visible {
+    opacity: 1;
+    visibility: visible;
 }
 
 #riddle-feedback.success {

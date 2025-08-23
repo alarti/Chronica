@@ -48,12 +48,16 @@ function showRiddleFeedback(isCorrect) {
     if (!feedbackDiv) return;
 
     feedbackDiv.textContent = isCorrect ? 'Superado' : 'Fallo';
-    feedbackDiv.classList.remove('success', 'failure', 'hidden');
+    feedbackDiv.classList.remove('success', 'failure');
     feedbackDiv.classList.add(isCorrect ? 'success' : 'failure');
 
+    // Make it visible
+    feedbackDiv.classList.add('visible');
+
+    // Set a timer to make it disappear
     setTimeout(() => {
-        feedbackDiv.classList.add('hidden');
-    }, 1000);
+        feedbackDiv.classList.remove('visible');
+    }, 2000);
 }
 
 function applyStateDelta(delta) {
