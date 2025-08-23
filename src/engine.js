@@ -137,8 +137,8 @@ export async function generateScene(input) {
     const jsonResponseString = result.choices[0].message.content;
     const scene = JSON.parse(jsonResponseString);
 
-    // Ensure the credits are always present.
-    scene.credits = "Created by Alberto Arce.";
+    // The credits are part of the prompt, so this is not needed.
+    // scene.credits = "Created by Alberto Arce.";
     return scene;
 
   } catch (error) {
