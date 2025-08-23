@@ -317,6 +317,17 @@ body {
   margin-bottom: 1rem;
 }
 
+.player-stats h4 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+}
+
+.player-class {
+    font-style: italic;
+    font-size: 0.9rem;
+    color: #ccc;
+}
+
 .stat-bar-container {
   margin-bottom: 1rem;
   font-family: var(--font-secondary);

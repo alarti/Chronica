@@ -60,6 +60,75 @@ async function getSummary(history) {
   }
 }
 
+const getCharacterPrompt = (playerNames, storyTitle) => {
+  const namesString = playerNames.join(', ');
+  return `
+You are a creative Character Generator for a text-based RPG called “Chronica: Infinite Stories”.
+Your task is to create a unique and interesting character for each player name provided.
+The theme of the story is: "${storyTitle}". Generate characters that would fit well within this theme.
+
+**Player Names:** ${namesString}
+
+**Directives:**
+1.  For each player, create a character with a unique \`race\` and \`class\`. Be creative (e.g., "Rock Golem Brawler", "Sentient Toaster Necromancer", "Human Detective").
+2.  Provide a 1-sentence \`description\` for each character that captures their personality.
+3.  Ensure the \`name\` field in the output matches the player name exactly.
+4.  Return EXACTLY a JSON array of objects, one for each player, with the following structure (no markdown, no extra keys):
+[
+  {
+    "name": "PlayerName1",
+    "race": "Some Race",
+    "class": "Some Class",
+    "description": "A short, flavorful description."
+  },
+  {
+    "name": "PlayerName2",
+    "race": "Another Race",
+    "class": "Another Class",
+    "description": "Another short, flavorful description."
+  }
+]
+`;
+};
+
+export async function generateCharacters(playerNames, storyTitle) {
+  const prompt = getCharacterPrompt(playerNames, storyTitle);
+  const payload = { model: 'openai', messages: [{ role: 'user', content: prompt }] };
+  const apiUrl = 'https://text.pollinations.ai/openai';
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      console.error(`Character generation API failed with status ${response.status}`);
+      throw new Error('API failed'); // Trigger fallback
+    }
+
+    const result = await response.json();
+    const jsonResponseString = result.choices[0].message.content;
+    const characters = JSON.parse(jsonResponseString);
+    // Ensure the generated characters match the requested names
+    if (characters.length !== playerNames.length) {
+        throw new Error("AI returned incorrect number of characters.");
+    }
+    return characters;
+
+  } catch (error) {
+    console.error("Failed to generate characters, using fallback:", error);
+    // Fallback data
+    return playerNames.map(name => ({
+      name: name,
+      race: "Human",
+      class: "Adventurer",
+      description: "A brave soul ready for anything."
+    }));
+  }
+}
+
 // This is the prompt contract that instructs the AI.
 const getPrompt = (input, summary) => {
   return `
@@ -78,8 +147,9 @@ The content must be family-friendly.
 **Story So Far (Summary):**
 ${summary}
 
-**Current Player State:**
-- Profile: ${JSON.stringify(input.playerProfile)}
+**Party State:**
+- Players: ${JSON.stringify(input.players.map(p => ({name: p.name, race: p.race, class: p.class, isAlive: p.isAlive})))}
+- Current Turn: It is ${input.players[input.turn].name}'s turn to act.
 - Last Choice: ${input.lastChoice || 'None'}
 
 Your task is to generate the NEXT scene, continuing from the history.
@@ -114,7 +184,7 @@ Return EXACTLY a JSON object with the following structure (no markdown, no extra
  * @returns {Promise<object>} The next scene, including narrative, options, and state changes.
  */
 export async function generateScene(input) {
-  const history = input.sessionState.history || [];
+  const history = input.history || [];
   const summary = await getSummary(history);
 
   const apiUrl = 'https://text.pollinations.ai/openai';

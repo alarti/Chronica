@@ -1,4 +1,4 @@
-import { generateScene } from './engine.js';
+import { generateScene, generateCharacters } from './engine.js';
 import { initDB, createNewStory, getAllStories, saveEvent, getHistory } from './database.js';
 
 const SCREENS = ['language-selector', 'start-screen', 'new-story-dialog', 'app', 'end-screen'];
@@ -249,7 +249,7 @@ function renderSidePanel() {
     }
     return `
     <div class="player-stats">
-        <h4>${player.name}</h4>
+        <h4>${player.name} - <span class="player-class">${player.race} ${player.class}</span></h4>
         <div class="stat-bar-container">
           <label>Health</label>
           <div class="stat-bar health-bar" style="width: ${player.health}%;"></div>
@@ -415,8 +415,8 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
   }
 }
 
-async function startGame(storyId, lang, timeLimit = 0, playerNames = ['Player']) {
-  console.log(`Starting game for story ${storyId} with lang: ${lang}, time: ${timeLimit}min, players: ${playerNames.join(', ')}`);
+async function startGame(storyId, lang, timeLimit = 0, characters) {
+  console.log(`Starting game for story ${storyId} with lang: ${lang}, time: ${timeLimit}min, players: ${characters.map(c=>c.name).join(', ')}`);
   currentStoryId = storyId;
   startTimer(timeLimit);
   showScreen('app');
@@ -432,8 +432,8 @@ async function startGame(storyId, lang, timeLimit = 0, playerNames = ['Player'])
     };
   }
 
-  const players = playerNames.map(name => ({
-    name: name,
+  const players = characters.map(char => ({
+    ...char,
     health: 100,
     mana: 100,
     isAlive: true,
@@ -509,15 +509,24 @@ async function handleNewStory(lang) {
   submitBtn.onclick = async () => {
     const title = input.value;
     if (title.trim()) {
-      const timeLimit = document.querySelector('input[name="time-limit"]:checked').value;
+        submitBtn.textContent = 'Generating...';
+        submitBtn.disabled = true;
+        try {
+            const timeLimit = document.querySelector('input[name="time-limit"]:checked').value;
+            const playerNameInputs = document.querySelectorAll('.player-name-input');
+            const playerNames = Array.from(playerNameInputs).map(input => input.value.trim() || input.placeholder);
 
-      const playerNameInputs = document.querySelectorAll('.player-name-input');
-      const playerNames = Array.from(playerNameInputs).map(input => input.value || input.placeholder);
-      console.log("Starting multiplayer game with players:", playerNames);
+            const characters = await generateCharacters(playerNames, title);
 
-      // The playerNames array will be used in the next phase for AI character generation.
-      currentStoryId = await createNewStory(title);
-      startGame(currentStoryId, lang, parseInt(timeLimit, 10), playerNames);
+            currentStoryId = await createNewStory(title);
+            startGame(currentStoryId, lang, parseInt(timeLimit, 10), characters);
+        } catch (error) {
+            console.error("Failed to start new story:", error);
+            renderError("Failed to generate the story. Please try again.");
+        } finally {
+            submitBtn.textContent = 'Begin';
+            submitBtn.disabled = false;
+        }
     }
   };
 }
@@ -535,8 +544,9 @@ async function handleLoadStory(lang) {
       li.textContent = `${story.title} (Last played: ${new Date(story.last_played).toLocaleString()})`;
       li.dataset.id = story.id;
       li.addEventListener('click', () => {
-        // Loaded stories are single player, no time limit
-        startGame(story.id, lang, 0, ['Player']);
+        // Loaded stories are single player, no time limit, no AI generation
+        const defaultCharacters = [{ name: 'Player', race: 'Human', class: 'Adventurer', description: 'A returning hero.' }];
+        startGame(story.id, lang, 0, defaultCharacters);
       });
       list.appendChild(li);
     });
