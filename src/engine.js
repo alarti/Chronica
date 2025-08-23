@@ -169,17 +169,31 @@ export async function generateCharacters(playerNames, storyTitle) {
 }
 
 // This is the prompt contract that instructs the AI.
-const getPrompt = (input, summary) => {
+const getPrompt = (input, summary, options = {}) => {
+  let specialInstructions = '';
+  if (options.isRiddleTurn) {
+    specialInstructions = `
+**SPECIAL INSTRUCTION: This is a riddle turn!**
+Your main task is to present a riddle or puzzle. The "story" text should describe the puzzle.
+You MUST provide three options: one is the correct answer, and two are incorrect.
+The incorrect options MUST have a health penalty, e.g., \`"stateDelta": {"health": -15}\`.
+The correct answer should have a positive or neutral stateDelta.
+`;
+  }
+
   return `
 You are the narrative engine for a game called “Chronica: Infinite Stories” by Alberto Arce.
 Your purpose is to generate fast-paced, engaging, and challenging narrative scenes.
 The user's chosen language is '${input.lang}'. All output must be in this language.
 The content must be family-friendly.
 
+${specialInstructions}
+
 **Core Directives:**
-1.  **Be Direct and Action-Oriented:** Focus on creating immediate challenges. Introduce enemies, obstacles, and conflicts frequently. The narrative should be concise and to the point, avoiding lengthy descriptions.
-2.  **Introduce Puzzles and Riddles:** Regularly include logical puzzles, riddles, or environmental challenges. When creating a puzzle, ensure some of the provided \`options\` are incorrect attempts at solving it. These incorrect options should result in a negative \`stateDelta\`, such as \`{"health": -10}\`, to represent a penalty.
-3.  **Maintain Consistency:**
+1.  **React to the Last Action:** The user's last action was: "${input.lastChoice}". The "story" you generate next MUST be a direct and logical consequence of this action. This is the most important rule.
+2.  **Be Direct and Action-Oriented:** Focus on creating immediate challenges. Introduce enemies, obstacles, and conflicts frequently. The narrative should be concise and to the point, avoiding lengthy descriptions.
+3.  **Introduce Puzzles and Riddles:** Regularly include logical puzzles, riddles, or environmental challenges. When creating a puzzle, ensure some of the provided \`options\` are incorrect attempts at solving it. These incorrect options should result in a negative \`stateDelta\`, such as \`{"health": -10}\`, to represent a penalty.
+4.  **Maintain Consistency:**
     -   **Characters:** Any characters introduced must remain consistent in their appearance, personality, and name.
     -   **Visuals:** Image prompts must maintain a consistent cinematic, dark fantasy style.
 
@@ -197,20 +211,13 @@ Return EXACTLY a JSON object with the following structure (no markdown, no extra
 {
   "story": "A brief, direct narrative (max 80 words) in '${input.lang}'.",
   "options": [
-    {"text": "An action-oriented option in '${input.lang}'...", "isRisky": false},
-    {"text": "A risky option that requires a dice roll...", "isRisky": true},
-    {"text": "A puzzle-solving or investigative option...", "isRisky": false}
+    {"text": "An action-oriented option in '${input.lang}'...", "isRisky": false, "stateDelta": {"risk": 5}},
+    {"text": "A risky option that requires a dice roll...", "isRisky": true, "stateDelta": {"risk": 20, "health": -5}},
+    {"text": "A puzzle-solving or investigative option...", "isRisky": false, "stateDelta": {"mana": -5}}
   ],
   "imagePrompt": "A short, vivid scene description for illustration, following the style rules.",
   "sceneTags": ["comma-free", "single", "word", "tags"],
   "ui": { "title": "Short scene title in '${input.lang}'", "toast": "1 short line reacting to last choice in '${input.lang}'" },
-  "stateDelta": {
-    "health": -10,
-    "mana": -5,
-    "risk": 10,
-    "inventory": { "Health Potion": -1, "Ancient Scroll": 1 },
-    "flags": { "door_unlocked": true }
-  },
   "credits": "Created by Alberto Arce."
 }
 `;
@@ -223,12 +230,12 @@ Return EXACTLY a JSON object with the following structure (no markdown, no extra
  * @param {GameInput} input - The current game state and player choices.
  * @returns {Promise<object>} The next scene, including narrative, options, and state changes.
  */
-export async function generateScene(input) {
+export async function generateScene(input, options = {}) {
   const history = input.history || [];
   const summary = await getSummary(history);
 
   const apiUrl = 'https://text.pollinations.ai/openai';
-  const prompt = getPrompt(input, summary);
+  const prompt = getPrompt(input, summary, options);
   const payload = { model: 'openai', messages: [{ role: 'user', content: prompt }] };
 
   try {

@@ -375,13 +375,17 @@ function renderScene(scene) {
     // Event listeners for the generated option buttons
     document.querySelectorAll('.option-button').forEach(button => {
       button.addEventListener('click', (event) => {
-        const selectedOptionText = event.target.innerText;
-        const isRisky = event.target.dataset.isRisky === 'true';
+        const optionIndex = parseInt(event.target.dataset.index, 10);
+        const chosenOption = scene.options[optionIndex];
+
+        const selectedOptionText = chosenOption.text;
+        const isRisky = chosenOption.isRisky || false;
+        const stateDelta = chosenOption.stateDelta || {};
 
         if (isRisky) {
-          handleRiskyChoice(selectedOptionText, scene.stateDelta, scene.story, scene.imagePrompt);
+          handleRiskyChoice(selectedOptionText, stateDelta, scene.story, scene.imagePrompt);
         } else {
-          advanceToNextScene(selectedOptionText, scene.stateDelta, scene.story, scene.imagePrompt);
+          advanceToNextScene(selectedOptionText, stateDelta, scene.story, scene.imagePrompt);
         }
       });
     });
@@ -393,7 +397,8 @@ function renderScene(scene) {
       customSubmit.addEventListener('click', () => {
         const customChoice = customInput.value;
         if (customChoice.trim() !== '') {
-          advanceToNextScene(customChoice, scene.stateDelta, scene.story, scene.imagePrompt);
+          // Custom inputs have no pre-defined state delta.
+          advanceToNextScene(customChoice, {}, scene.story, scene.imagePrompt);
         }
       });
     }
@@ -403,18 +408,23 @@ function renderScene(scene) {
 function advanceTurn() {
     if (!gameState.players || gameState.players.length === 0) return;
 
-    // Find the number of living players
     const livingPlayers = gameState.players.filter(p => p.isAlive);
     if (livingPlayers.length === 0) {
-        return; // Game over is handled elsewhere, but no turn to advance to.
+        return; // Game over is handled elsewhere.
     }
 
-    let nextTurn = (gameState.turn + 1) % gameState.players.length;
-    // Loop until we find a living player
-    while (!gameState.players[nextTurn].isAlive) {
-        nextTurn = (nextTurn + 1) % gameState.players.length;
-    }
-    gameState.turn = nextTurn;
+    let nextTurn;
+    let currentTurn = gameState.turn;
+
+    do {
+        currentTurn = (currentTurn + 1) % gameState.players.length;
+        if (currentTurn === 0) { // A full round has passed
+            gameState.round = (gameState.round || 0) + 1;
+            console.log(`--- Round ${gameState.round} ---`);
+        }
+    } while (!gameState.players[currentTurn].isAlive);
+
+    gameState.turn = currentTurn;
 }
 
 async function handleRiskyChoice(actionText, stateDelta, storyText, imagePrompt) {
@@ -478,7 +488,13 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
   }
 
   try {
-    const nextScene = await generateScene(gameState);
+    // Check for special riddle turn
+    const isRiddleTurn = gameState.round > 0 && (gameState.round % 3 === 0) && gameState.turn === 0;
+    if (isRiddleTurn) {
+        console.log("--- Generating a special riddle! ---");
+    }
+
+    const nextScene = await generateScene(gameState, { isRiddleTurn });
     renderScene(nextScene);
   } catch (error) {
     console.error("Failed to generate next scene:", error);
@@ -515,6 +531,7 @@ async function startGame(storyId, lang, timeLimit = 0, characters, title = 'My A
     storyTitle: title,
     players: players,
     turn: 0, // Index for the current player
+    round: 0, // For tracking riddle frequency
     risk: 0,
     inventory: {},
     flags: {},
