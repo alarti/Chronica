@@ -260,6 +260,16 @@ function renderSidePanel() {
   const panel = document.getElementById('side-panel');
   if (!panel || !gameState.players) return;
 
+  const turnIndicator = document.getElementById('turn-indicator');
+  if (turnIndicator) {
+      const currentPlayer = gameState.players[gameState.turn];
+      if (currentPlayer && currentPlayer.isAlive) {
+        turnIndicator.textContent = `Turn: ${currentPlayer.name}`;
+      } else {
+        turnIndicator.textContent = 'Turn: ...';
+      }
+  }
+
   let playerStatsHtml = gameState.players.map((player, index) => {
     const isActive = index === gameState.turn;
     const activeClass = isActive ? 'active-player' : '';
