@@ -43,8 +43,27 @@ let gameState = {};
 let timerInterval;
 let currentStoryId = null;
 
+function showRiddleFeedback(isCorrect) {
+    const feedbackDiv = document.getElementById('riddle-feedback');
+    if (!feedbackDiv) return;
+
+    feedbackDiv.textContent = isCorrect ? 'Superado' : 'Fallo';
+    feedbackDiv.className = isCorrect ? 'success' : 'failure';
+
+    feedbackDiv.classList.remove('hidden');
+
+    setTimeout(() => {
+        feedbackDiv.classList.add('hidden');
+    }, 1000);
+}
+
 function applyStateDelta(delta) {
   if (!delta) return;
+
+    // Merge world state
+    if (delta.worldState) {
+        Object.assign(gameState.worldState, delta.worldState);
+    }
 
   const currentPlayer = gameState.players[gameState.turn];
 
@@ -209,7 +228,7 @@ async function endGame(reason) {
       storyTitle: gameState.storyTitle,
       players: gameState.players
   };
-  const epilogue = await generateEnding(finalState);
+  const epilogue = await generateEnding(finalState, gameState.lang);
   finalStatsContainer.innerHTML = `<p>${epilogue}</p>`;
 
   document.getElementById('restart-btn').onclick = () => {
@@ -354,6 +373,7 @@ function renderRiddle(riddle) {
         button.className = 'option-button';
         button.textContent = option.texto;
         button.onclick = () => {
+            showRiddleFeedback(option.correcta);
             if (option.correcta) {
                 advanceToNextScene("You solved the riddle correctly!", {mana: 15});
             } else {

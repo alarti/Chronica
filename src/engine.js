@@ -60,27 +60,28 @@ async function getSummary(history) {
   }
 }
 
-const getEndingPrompt = (finalState) => {
+const getEndingPrompt = (finalState, lang) => {
   return `
 You are the epilogue writer for a text-based RPG called “Chronica: Infinite Stories”.
-Your task is to write a short, flavorful, and conclusive final paragraph for the adventure based on the final state of the game.
+Your task is to write a short, flavorful, and conclusive final paragraph for the adventure in the specified language.
 
+**Language:** ${lang}
 **Game Title:** ${finalState.storyTitle}
 **Game Over Reason:** ${finalState.reason}
 **Final Party State:** ${JSON.stringify(finalState.players.map(p => ({ name: p.name, health: p.health, isAlive: p.isAlive })))}
 
 **Directives:**
-1.  Write a single, compelling paragraph that serves as an epilogue.
+1.  Write a single, compelling paragraph in ${lang} that serves as an epilogue.
 2.  If the reason is "time_up", describe how the party was overwhelmed or ran out of time.
 3.  If the reason is "party_defeated", describe their noble (or ignoble) final stand.
 4.  Reference the final state of the players. If some survived, mention them. If all perished, reflect on their legacy.
 5.  The tone should match the game's title and theme.
-6.  Do not output JSON. Output only the raw text of the epilogue paragraph.
+6.  Do not output JSON. Output only the raw text of the epilogue paragraph in ${lang}.
 `;
 };
 
-export async function generateEnding(finalState) {
-  const prompt = getEndingPrompt(finalState);
+export async function generateEnding(finalState, lang) {
+  const prompt = getEndingPrompt(finalState, lang);
   const payload = { model: 'openai', messages: [{ role: 'user', content: prompt }] };
   const apiUrl = 'https://text.pollinations.ai/openai';
 
@@ -232,9 +233,11 @@ ${summary}
 - Players: ${JSON.stringify(input.players.map(p => ({name: p.name, race: p.race, class: p.class, isAlive: p.isAlive})))}
 - Current Turn: It is ${input.players[input.turn].name}'s turn to act.
 - Last Choice: ${input.lastChoice || 'None'}
-- Story Theme: The story is titled "${input.storyTitle}". The entire narrative, including the setting, characters, and tone, MUST strictly adhere to the theme of this title. For example, if the title is "Galactic Kitchen Wars", the story should be a humorous sci-fi adventure about sentient kitchen utensils. If the title is "The Last Detective", it should be a grim noir mystery. Be creative and adapt the genre to the title.
+- Story Theme: The story is titled "${input.storyTitle}". The entire narrative, including the setting, characters, and tone, MUST strictly adhere to the theme of this title.
+- Known World State: Use these details for consistency. ${JSON.stringify(input.worldState)}
 
-Your task is to generate the NEXT scene, continuing from the history.
+**Your Task:**
+Generate the NEXT scene. Update the world state with any new characters, locations, or key items.
 Return EXACTLY a JSON object with the following structure (no markdown, no extra keys):
 {
   "story": "A brief, direct narrative (max 80 words) in '${input.lang}'.",
@@ -243,8 +246,11 @@ Return EXACTLY a JSON object with the following structure (no markdown, no extra
     {"text": "A risky option that requires a dice roll...", "isRisky": true, "stateDelta": {"risk": 20, "health": -5}},
     {"text": "A puzzle-solving or investigative option...", "isRisky": false, "stateDelta": {"mana": -5}}
   ],
-  "imagePrompt": "A short, vivid scene description for illustration, following the style rules.",
+  "imagePrompt": "A short, vivid scene description for illustration, using details from the world state.",
   "sceneTags": ["comma-free", "single", "word", "tags"],
+  "stateDelta": {
+    "worldState": { "new_character_name": "description", "new_location_name": "description" }
+  },
   "ui": { "title": "Short scene title in '${input.lang}'", "toast": "1 short line reacting to last choice in '${input.lang}'" },
   "credits": "Created by Alberto Arce."
 }

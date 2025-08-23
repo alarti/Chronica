@@ -415,6 +415,28 @@ body {
 
 
 /* Dice Roll Modal */
+#riddle-feedback {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 20px 40px;
+    border-radius: 10px;
+    font-size: 2.5em;
+    font-weight: bold;
+    color: white;
+    z-index: 100;
+    text-shadow: 2px 2px 4px #000000;
+}
+
+#riddle-feedback.success {
+    background-color: rgba(46, 204, 113, 0.8);
+}
+
+#riddle-feedback.failure {
+    background-color: rgba(231, 76, 60, 0.8);
+}
+
 #dice-roll-modal {
   position: fixed;
   top: 0;
