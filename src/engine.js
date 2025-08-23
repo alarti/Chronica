@@ -203,7 +203,7 @@ ${usedRiddlesText}
   ]
 }
 `;
-}
+};
 
 // This is the prompt contract that instructs the AI.
 const getPrompt = (input, summary, options = {}) => {
@@ -299,8 +299,74 @@ export async function generateScene(input, options = {}) {
         return {
             acertijo: "The API failed. What is the answer to life, the universe, and everything?",
             opciones: [{texto: "42", correcta: true}, {texto: "24", correcta: false}, {texto: "Potato", correcta: false}]
-        }
+        };
     }
     return fallbackScene;
   }
+}
+
+const getPlotPrompt = (title, lang) => {
+    return `
+You are a master storyteller for the text-based RPG “Chronica: Infinite Stories”.
+Your task is to generate a complete, original story plot based on a given title.
+The story must have a clear beginning, a rising action, a climax, and a resolution.
+The user's chosen language is '${lang}'. All output must be in this language.
+
+**Story Title:** "${title}"
+
+**Directives:**
+1.  **Overall Summary:** Write a brief, one-paragraph summary of the entire story.
+2.  **Act Structure:** Divide the story into 5 to 10 "scenes".
+3.  **Scene Content:** For each scene, provide a 'title' and a 'description'. The description should set the stage for that part of the story.
+4.  **JSON Format:** Return EXACTLY a JSON object with the following structure (no markdown, no extra keys):
+{
+  "title": "The Full Title of the Story",
+  "summary": "The one-paragraph summary of the story.",
+  "scenes": [
+    {
+      "title": "Scene 1 Title",
+      "description": "A description of what happens in the first scene."
+    },
+    {
+      "title": "Scene 2 Title",
+      "description": "A description of the next part of the story."
+    }
+  ]
+}
+`;
+};
+
+export async function generatePlot(title, lang) {
+    const prompt = getPlotPrompt(title, lang);
+    const payload = { model: 'openai', messages: [{ role: 'user', content: prompt }] };
+    const apiUrl = 'https://text.pollinations.ai/openai';
+
+    try {
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            console.error(`Plot generation API failed with status ${response.status}`);
+            throw new Error('API failed');
+        }
+
+        const result = await response.json();
+        const jsonResponseString = result.choices[0].message.content;
+        return JSON.parse(jsonResponseString);
+
+    } catch (error) {
+        console.error("Failed to generate plot, using fallback:", error);
+        return {
+            title: title,
+            summary: "An unexpected error occurred while trying to generate your story. You find yourself on a generic adventure.",
+            scenes: [
+                { title: "The Beginning", description: "The adventure starts here." },
+                { title: "The Middle", description: "The plot thickens." },
+                { title: "The End", description: "The story concludes." }
+            ]
+        };
+    }
 }

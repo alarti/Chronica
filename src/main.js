@@ -1,5 +1,5 @@
-import { generateScene, generateCharacters, generateEnding } from './engine.js';
-import { initDB, createNewStory, getAllStories, saveEvent, getHistory, deleteStory } from './database.js';
+import { generateScene, generateCharacters, generateEnding, generatePlot } from './engine.js';
+import { initDB, createNewStory, getAllStories, saveEvent, getHistory, deleteStory, updateStory, getStory } from './database.js';
 
 const SCREENS = ['language-selector', 'start-screen', 'new-story-dialog', 'app', 'end-screen'];
 
@@ -256,7 +256,21 @@ function startTimer(durationInMinutes = 0) {
     }
 }
 
+function updateProgress() {
+    const fill = document.getElementById('progress-bar-fill');
+    const percentage = document.getElementById('progress-percentage');
+    if (!fill || !percentage || !gameState.plot || !gameState.plot.scenes) return;
+
+    const totalScenes = gameState.plot.scenes.length;
+    const currentScene = gameState.sceneIndex;
+    const progress = totalScenes > 0 ? Math.round((currentScene / totalScenes) * 100) : 0;
+
+    fill.style.width = `${progress}%`;
+    percentage.textContent = `${progress}%`;
+}
+
 function renderSidePanel() {
+  updateProgress(); // Update progress bar every time side panel is rendered
   const panel = document.getElementById('side-panel');
   if (!panel || !gameState.players) return;
 
@@ -512,10 +526,12 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
 
   applyStateDelta(stateDelta);
   renderSidePanel();
+  updateProgress();
 
   // Advance the turn to the next living player
   advanceTurn();
   gameState.lastChoice = choice;
+  gameState.sceneIndex++; // Move to the next scene in the plot
 
   // Save the event that just concluded
   await saveEvent(currentStoryId, {
@@ -525,6 +541,9 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
     story: storyText,
     imagePrompt: imagePrompt
   });
+
+  // Save the entire game state
+  await updateStory(currentStoryId, { gameState: gameState });
 
   const history = await getHistory(currentStoryId, 5);
   gameState.history = history; // Save history at the top level
@@ -555,9 +574,11 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
   }
 }
 
-async function startGame(storyId, lang, timeLimit = 0, characters, title = 'My Adventure') {
-  console.log(`Starting game for story ${storyId} with lang: ${lang}, time: ${timeLimit}min, players: ${characters.map(c=>c.name).join(', ')}`);
+async function startGame(storyId, initialGameState, timeLimit = 0) {
+  console.log(`Starting game for story ${storyId}`);
   currentStoryId = storyId;
+  gameState = initialGameState;
+
   startTimer(timeLimit);
   showScreen('app');
 
@@ -572,37 +593,19 @@ async function startGame(storyId, lang, timeLimit = 0, characters, title = 'My A
     };
   }
 
-  const players = characters.map(char => ({
-    ...char,
-    health: 100,
-    mana: 100,
-    isAlive: true,
-  }));
-
-  gameState = {
-    lang: lang,
-    storyTitle: title,
-    players: players,
-    turn: 0, // Index for the current player
-    round: 0, // For tracking riddle frequency
-    risk: 0,
-    inventory: {},
-    flags: {},
-    worldState: {},
-    lastChoice: null,
-    usedRiddles: []
-  };
-
-  const history = await getHistory(currentStoryId, Infinity);
-  if (history.length > 0) {
-    console.log('Reconstructing state from history...');
-    // Note: applyStateDelta will need to be multiplayer-aware.
-    // For now, this might not work as expected until that is refactored.
-    history.reverse().forEach(event => applyStateDelta(event.stateDelta));
-  }
-
   renderSidePanel();
-  advanceToNextScene("The story begins.", {}, "Welcome to your story!");
+
+  // If this is a new game, the sceneIndex will be 0.
+  if (gameState.sceneIndex === 0) {
+      advanceToNextScene("The story begins.", {}, "Welcome to your story!");
+  } else {
+      // If loading, just render the current state and wait for player.
+      // We can refetch the last scene from history if needed, or just show a generic message.
+      document.getElementById('app').innerHTML = `<p>Continue your adventure, ${gameState.players[gameState.turn].name}!</p>`;
+      // This part could be improved to re-render the last scene properly.
+      // For now, we'll just show the side panel and let the player take their turn.
+      // A full implementation would require re-rendering the last scene based on history.
+  }
 }
 
 async function showStartScreen(lang) {
@@ -644,7 +647,7 @@ async function handleNewStory(lang) {
         input.placeholder = `Player ${i} Name`;
         playerNamesContainer.appendChild(input);
     }
-  }
+  };
 
   playerCountSelector.addEventListener('change', updatePlayerNameInputs);
   updatePlayerNameInputs(); // Initial call
@@ -659,10 +662,35 @@ async function handleNewStory(lang) {
             const playerNameInputs = document.querySelectorAll('.player-name-input');
             const playerNames = Array.from(playerNameInputs).map(input => input.value.trim() || input.placeholder);
 
-            const characters = await generateCharacters(playerNames, title);
+            // 1. Generate characters and plot in parallel
+            const [characters, plot] = await Promise.all([
+                generateCharacters(playerNames, title),
+                generatePlot(title, lang)
+            ]);
 
-            currentStoryId = await createNewStory(title);
-            startGame(currentStoryId, lang, parseInt(timeLimit, 10), characters, title);
+            // 2. Create initial game state
+            const initialGameState = {
+                lang: lang,
+                storyTitle: title,
+                plot: plot,
+                sceneIndex: 0,
+                players: characters.map(char => ({ ...char, health: 100, mana: 100, isAlive: true })),
+                turn: 0,
+                round: 0,
+                risk: 0,
+                inventory: {},
+                flags: {},
+                worldState: {},
+                lastChoice: null,
+                usedRiddles: []
+            };
+
+            // 3. Create the story in the database
+            const newStoryId = await createNewStory(title, plot, initialGameState);
+
+            // 4. Start the game
+            startGame(newStoryId, initialGameState, parseInt(timeLimit, 10));
+
         } catch (error) {
             console.error("Failed to start new story:", error);
             renderError("Failed to generate the story. Please try again.");
@@ -689,9 +717,13 @@ async function handleLoadStory(lang) {
       const titleSpan = document.createElement('span');
       titleSpan.className = 'story-list-title';
       titleSpan.textContent = `${story.title} (Last played: ${new Date(story.last_played).toLocaleString()})`;
-      titleSpan.onclick = () => {
-        const defaultCharacters = [{ name: 'Player', race: 'Human', class: 'Adventurer', description: 'A returning hero.' }];
-        startGame(story.id, lang, 0, defaultCharacters, story.title);
+      titleSpan.onclick = async () => {
+        const fullStory = await getStory(story.id);
+        if (fullStory && fullStory.gameState) {
+            startGame(fullStory.id, fullStory.gameState);
+        } else {
+            renderError(`Could not load story "${story.title}". It might be corrupted.`);
+        }
       };
 
       const actionsDiv = document.createElement('div');

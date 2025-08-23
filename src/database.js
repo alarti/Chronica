@@ -33,15 +33,53 @@ export function initDB() {
   });
 }
 
-export function createNewStory(title) {
+export function createNewStory(title, plot, gameState) {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([STORIES_STORE], 'readwrite');
     const store = transaction.objectStore(STORIES_STORE);
-    const newStory = { title: title, last_played: new Date() };
+    const newStory = {
+        title: title,
+        plot: plot,
+        gameState: gameState,
+        last_played: new Date()
+    };
     const request = store.add(newStory);
     request.onsuccess = () => resolve(request.result); // Returns the new ID
     request.onerror = (event) => reject(event.target.error);
   });
+}
+
+export function updateStory(storyId, data) {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORIES_STORE], 'readwrite');
+        const store = transaction.objectStore(STORIES_STORE);
+        const request = store.get(storyId);
+
+        request.onsuccess = () => {
+            const story = request.result;
+            if (story) {
+                // Update the fields
+                Object.assign(story, data);
+                story.last_played = new Date();
+                const updateRequest = store.put(story);
+                updateRequest.onsuccess = () => resolve(updateRequest.result);
+                updateRequest.onerror = (event) => reject(event.target.error);
+            } else {
+                reject(new Error(`Story with id ${storyId} not found`));
+            }
+        };
+        request.onerror = (event) => reject(event.target.error);
+    });
+}
+
+export function getStory(id) {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORIES_STORE], 'readonly');
+        const store = transaction.objectStore(STORIES_STORE);
+        const request = store.get(id);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = (event) => reject(event.target.error);
+    });
 }
 
 export function deleteStory(storyId) {
