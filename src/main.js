@@ -270,6 +270,11 @@ function renderSidePanel() {
       }
   }
 
+  const roundCounter = document.getElementById('round-counter');
+  if (roundCounter) {
+      roundCounter.textContent = `Round: ${gameState.round || 0}`;
+  }
+
   let playerStatsHtml = gameState.players.map((player, index) => {
     const isActive = index === gameState.turn;
     const activeClass = isActive ? 'active-player' : '';
@@ -723,6 +728,16 @@ async function handleLoadStory(lang) {
 async function main() {
   await initDB();
   showScreen('language-selector'); // Start at the language selector
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').then(registration => {
+        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+      }, err => {
+        console.log('ServiceWorker registration failed: ', err);
+      });
+    });
+  }
 
   // Language Selector Logic
   document.querySelectorAll('.flag-button').forEach(button => {
