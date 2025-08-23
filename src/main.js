@@ -1,4 +1,4 @@
-import { generateScene, generateCharacters } from './engine.js';
+import { generateScene, generateCharacters, generateEnding } from './engine.js';
 import { initDB, createNewStory, getAllStories, saveEvent, getHistory } from './database.js';
 
 const SCREENS = ['language-selector', 'start-screen', 'new-story-dialog', 'app', 'end-screen'];
@@ -187,12 +187,13 @@ async function generatePDF() {
     }
 }
 
-function endGame(reason) {
+async function endGame(reason) {
   console.log(`Game Over: ${reason}`);
   clearInterval(timerInterval);
 
   const endScreen = document.getElementById('end-screen');
   const endTitle = endScreen.querySelector('h2');
+  const finalStatsContainer = document.getElementById('final-stats');
 
   if (reason === 'time_up') {
     endTitle.textContent = "Time's Up!";
@@ -200,11 +201,16 @@ function endGame(reason) {
     endTitle.textContent = "Your Party Has Been Defeated";
   }
 
-  // Clear the final stats container for now, as its logic will be more complex
-  const finalStatsContainer = document.getElementById('final-stats');
-  finalStatsContainer.innerHTML = '';
-
+  finalStatsContainer.innerHTML = `<p><i>Generating your epilogue...</i></p>`;
   showScreen('end-screen');
+
+  const finalState = {
+      reason: reason,
+      storyTitle: gameState.storyTitle,
+      players: gameState.players
+  };
+  const epilogue = await generateEnding(finalState);
+  finalStatsContainer.innerHTML = `<p>${epilogue}</p>`;
 
   document.getElementById('restart-btn').onclick = () => {
     window.location.reload();
@@ -342,6 +348,30 @@ function renderScene(scene) {
 
   // Add event listeners after a short delay to ensure elements are in the DOM
   setTimeout(() => {
+    const currentPlayer = gameState.players[gameState.turn];
+    const optionsList = document.querySelector("#options-container ul");
+
+    if (optionsList && currentPlayer.isAlive) {
+        const passTurnLi = document.createElement('li');
+        const passTurnBtn = document.createElement('button');
+        passTurnBtn.id = 'pass-turn-btn';
+        passTurnBtn.innerHTML = 'Pass Turn (-10 Mana)';
+        if (currentPlayer.mana < 10) {
+            passTurnBtn.disabled = true;
+            passTurnBtn.title = 'Not enough mana';
+        }
+        passTurnBtn.addEventListener('click', () => {
+            if (currentPlayer.mana >= 10) {
+                advanceToNextScene(
+                    `${currentPlayer.name} takes a moment to rest and gather their thoughts.`,
+                    { mana: -10 }
+                );
+            }
+        });
+        passTurnLi.appendChild(passTurnBtn);
+        optionsList.appendChild(passTurnLi);
+    }
+
     // Event listeners for the generated option buttons
     document.querySelectorAll('.option-button').forEach(button => {
       button.addEventListener('click', (event) => {

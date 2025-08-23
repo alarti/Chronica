@@ -60,6 +60,45 @@ async function getSummary(history) {
   }
 }
 
+const getEndingPrompt = (finalState) => {
+  return `
+You are the epilogue writer for a text-based RPG called “Chronica: Infinite Stories”.
+Your task is to write a short, flavorful, and conclusive final paragraph for the adventure based on the final state of the game.
+
+**Game Title:** ${finalState.storyTitle}
+**Game Over Reason:** ${finalState.reason}
+**Final Party State:** ${JSON.stringify(finalState.players.map(p => ({ name: p.name, health: p.health, isAlive: p.isAlive })))}
+
+**Directives:**
+1.  Write a single, compelling paragraph that serves as an epilogue.
+2.  If the reason is "time_up", describe how the party was overwhelmed or ran out of time.
+3.  If the reason is "party_defeated", describe their noble (or ignoble) final stand.
+4.  Reference the final state of the players. If some survived, mention them. If all perished, reflect on their legacy.
+5.  The tone should match the game's title and theme.
+6.  Do not output JSON. Output only the raw text of the epilogue paragraph.
+`;
+};
+
+export async function generateEnding(finalState) {
+  const prompt = getEndingPrompt(finalState);
+  const payload = { model: 'openai', messages: [{ role: 'user', content: prompt }] };
+  const apiUrl = 'https://text.pollinations.ai/openai';
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok) throw new Error('API failed');
+    const result = await response.json();
+    return result.choices[0].message.content;
+  } catch (error) {
+    console.error("Failed to generate ending:", error);
+    return "And so, the adventure concluded, its final tales lost to the winds of time."; // Fallback
+  }
+}
+
 const getCharacterPrompt = (playerNames, storyTitle) => {
   const namesString = playerNames.join(', ');
   return `
