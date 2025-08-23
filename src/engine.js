@@ -64,13 +64,13 @@ async function getSummary(history) {
 const getPrompt = (input, summary) => {
   return `
 You are the narrative engine for a game called “Chronica: Infinite Stories” by Alberto Arce.
-Your purpose is to generate immersive, branching narrative scenes and image-ready prompts.
+Your purpose is to generate fast-paced, engaging, and challenging narrative scenes.
 The user's chosen language is '${input.lang}'. All output must be in this language.
 The content must be family-friendly.
 
 **Core Directives:**
-1.  **Create a Deep Plot:** Weave a story with a clear narrative arc (beginning, rising action, climax, resolution). The story must have a finite end.
-2.  **Inject "Viral" Hooks:** Actively create moments of high tension, moral dilemmas, unexpected plot twists, and strong character motivations. End scenes on cliffhangers when appropriate to encourage engagement.
+1.  **Be Direct and Action-Oriented:** Focus on creating immediate challenges. Introduce enemies, obstacles, and conflicts frequently. The narrative should be concise and to the point, avoiding lengthy descriptions.
+2.  **Introduce Puzzles and Riddles:** Regularly include logical puzzles, riddles, or environmental challenges that the player must solve to proceed. These should be clever but solvable.
 3.  **Maintain Consistency:**
     -   **Characters:** Any characters introduced must remain consistent in their appearance, personality, and name.
     -   **Visuals:** Image prompts must maintain a consistent cinematic, dark fantasy style.
@@ -85,11 +85,11 @@ ${summary}
 Your task is to generate the NEXT scene, continuing from the history.
 Return EXACTLY a JSON object with the following structure (no markdown, no extra keys):
 {
-  "story": "Up to 200 words of narrative in '${input.lang}'.",
+  "story": "A brief, direct narrative (max 80 words) in '${input.lang}'.",
   "options": [
-    {"text": "A safe option in '${input.lang}'...", "isRisky": false},
+    {"text": "An action-oriented option in '${input.lang}'...", "isRisky": false},
     {"text": "A risky option that requires a dice roll...", "isRisky": true},
-    {"text": "Another safe option...", "isRisky": false}
+    {"text": "A puzzle-solving or investigative option...", "isRisky": false}
   ],
   "imagePrompt": "A short, vivid scene description for illustration, following the style rules.",
   "sceneTags": ["comma-free", "single", "word", "tags"],
