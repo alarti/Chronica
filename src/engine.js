@@ -277,7 +277,7 @@ ${summary}
 
 **Party State:**
 - Players: ${JSON.stringify(input.players.map(p => ({name: p.name, race: p.race, class: p.class, isAlive: p.isAlive})))}
-- Current Turn: It is ${input.players[input.turn].name}'s turn to act. The story should be focused on this character's actions and perspective.
+- Current Turn: It is ${input.players[input.turn].name}'s turn to act. The story and options should be focused on this character's actions and perspective. The options should be phrased as actions that ${input.players[input.turn].name} can take.
 - Last Choice: ${input.lastChoice || 'None'}
 - Story Theme: The story is titled "${input.storyTitle}". The entire narrative must strictly adhere to this theme.
 - Known World State: Use these details for consistency. ${JSON.stringify(input.worldState)}
