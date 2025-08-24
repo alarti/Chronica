@@ -829,8 +829,9 @@ body {
     #story-text {
         font-size: 1.2rem;
         line-height: 1.5;
-        max-height: 40vh; /* Limit height on mobile */
+        max-height: 12em; /* Limit height to 8 lines */
         overflow-y: auto; /* Allow scrolling for long text */
+        padding-right: 1rem; /* Add some padding for the scrollbar */
     }
 
     #options-container {
