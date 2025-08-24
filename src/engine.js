@@ -239,7 +239,7 @@ Your task is to write a compelling introductory scene for the story.
   "imagePrompt": "A vivid scene description for the introduction.",
   "sceneTags": ["introduction", "prologue"],
   "stateDelta": { "worldState": {} },
-  "ui": { "title": "The Adventure Begins", "toast": "Your story unfolds..." },
+  "ui": { "title": "Chapter 0: Introduction", "toast": "Your story unfolds..." },
   "credits": "Created by Alberto Arce."
 }
 `;

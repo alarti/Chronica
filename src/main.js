@@ -457,7 +457,14 @@ function renderScene(scene) {
   const optionsContainer = document.getElementById('options-container');
 
   if (storyElement && optionsContainer) {
-    typewriter(storyElement, scene.story, 50, () => {
+    let storyText = scene.story;
+    if (gameState.sceneIndex === 0) {
+        const characterSheets = gameState.players.map(p => {
+            return `\n**${p.name}**\n*${p.race} ${p.class}*\n> ${p.description}`;
+        }).join('\n');
+        storyText = `**Character Sheets**\n${characterSheets}\n\n${storyText}`;
+    }
+    typewriter(storyElement, storyText, 50, () => {
       optionsContainer.classList.add('visible');
     });
   }
