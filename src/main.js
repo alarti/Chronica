@@ -358,7 +358,7 @@ function updateProgress() {
 }
 
 function renderSidePanel() {
-  updateProgress(); // Update progress bar every time side panel is rendered
+  updateProgress(); // This will find and update the progress bar elements after they are rendered.
   const panel = document.getElementById('side-panel');
   if (!panel || !gameState.players) return;
 
@@ -407,6 +407,14 @@ function renderSidePanel() {
 
   panel.innerHTML = `
     <button id="close-panel-btn">X</button>
+    <div id="progress-container">
+        <span>Story Progress:</span>
+        <div id="progress-bar">
+            <div id="progress-bar-fill"></div>
+        </div>
+        <span id="progress-percentage">0%</span>
+    </div>
+    <hr>
     <h3>Party Stats</h3>
     ${playerStatsHtml}
     <hr>
@@ -419,6 +427,9 @@ function renderSidePanel() {
       <span>${gameState.risk}/100</span>
     </div>
   `;
+
+  // Call updateProgress again after the innerHTML is set to ensure the bar is drawn correctly.
+  updateProgress();
 }
 
 function attachOptionListeners(scene) {
