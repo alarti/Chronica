@@ -157,7 +157,7 @@ async function generatePDF() {
 
         history.reverse(); // chronological order
 
-        for (const event of history) {
+        for (const [index, event] of history.entries()) {
             if (y > pageHeight - 20) { // Page break check
                 doc.addPage();
                 y = 20;
@@ -179,7 +179,12 @@ async function generatePDF() {
             }
 
             if (event.story) {
-                if (event.isEpilogue) {
+                if (index === 0) {
+                    doc.setFont(undefined, 'bold');
+                    doc.text("Introduction", margin, y);
+                    y += 7;
+                    doc.setFont(undefined, 'normal');
+                } else if (event.isEpilogue) {
                     doc.setFont(undefined, 'bold');
                     doc.text("Epilogue", margin, y);
                     y += 7;
