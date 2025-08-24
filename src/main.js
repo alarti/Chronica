@@ -23,6 +23,7 @@ function typewriter(element, text, speed = 50, callback = () => {}) {
   const timer = setInterval(() => {
     if (i < text.length) {
       element.innerHTML += text.charAt(i);
+      element.scrollTop = element.scrollHeight;
       i++;
     } else {
       clearInterval(timer);

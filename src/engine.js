@@ -31,35 +31,6 @@ const fallbackScene = {
   credits: "Created by Alberto Arce."
 };
 
-async function getSummary(history) {
-  if (!history || history.length === 0) {
-    return 'This is the first turn.';
-  }
-
-  const fullStory = history.map(event => {
-    const choiceText = (typeof event.choice === 'object') ? event.choice.action : event.choice;
-    return `> ${choiceText}\\n${event.story}`;
-  }).join('\\n\\n');
-
-  const prompt = `Summarize the following story so far in a few concise paragraphs. This summary will be used as context for a text-based RPG. Do not break character, just provide the summary. STORY: \\n${fullStory}`;
-  const payload = { model: 'openai', messages: [{ role: 'user', content: prompt }] };
-  const apiUrl = 'https://text.pollinations.ai/openai';
-
-  try {
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (!response.ok) return "The story continues..."; // Fallback summary
-    const result = await response.json();
-    return result.choices[0].message.content;
-  } catch (error) {
-    console.error("Failed to get summary:", error);
-    return "The story continues..."; // Fallback summary
-  }
-}
-
 const getEndingPrompt = (finalState, lang) => {
   return `
 You are the epilogue writer for a text-based RPG called “Chronica: Infinite Stories”.
@@ -243,7 +214,7 @@ Your task is to write a compelling introductory scene for the story.
 };
 
 // This is the prompt contract that instructs the AI.
-const getPrompt = (input, summary, options = {}) => {
+const getPrompt = (input, options = {}) => {
   if (options.isRiddleTurn) {
     return getRiddlePrompt(input);
   }
@@ -254,6 +225,10 @@ const getPrompt = (input, summary, options = {}) => {
   }
 
     const currentSceneGoal = input.plot?.scenes[input.sceneIndex]?.description || "The story continues, with the heroes charting their own path.";
+    const history = input.history.map(event => {
+        const choiceText = (typeof event.choice === 'object') ? event.choice.action : event.choice;
+        return `> ${choiceText}\\n${event.story}`;
+    }).join('\\n\\n');
 
   return `
 You are the narrative engine for a game called “Chronica: Infinite Stories” by Alberto Arce.
@@ -269,8 +244,10 @@ The content must be family-friendly.
     -   **Characters:** Any characters introduced must remain consistent in their appearance, personality, and name.
     -   **Visuals:** Image prompts must maintain a style that is consistent with the story's theme and title.
 
-**Story So Far (Summary):**
-${summary}
+**Story Context:**
+- **Initial Plot:** ${JSON.stringify(input.plot)}
+- **Full Event History:**
+${history}
 
 **Party State:**
 - Players: ${JSON.stringify(input.players.map(p => ({name: p.name, race: p.race, class: p.class, isAlive: p.isAlive})))}. You MUST use the characters' races and classes to inform the narrative.
@@ -311,10 +288,9 @@ Return EXACTLY a JSON object with the following structure (no markdown, no extra
  */
 export async function generateScene(input, options = {}) {
   const history = input.history || [];
-  const summary = await getSummary(history);
 
   const apiUrl = 'https://text.pollinations.ai/openai';
-  const prompt = getPrompt(input, summary, options);
+  const prompt = getPrompt(input, options);
   const payload = { model: 'openai', messages: [{ role: 'user', content: prompt }] };
 
   try {
