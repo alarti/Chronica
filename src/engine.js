@@ -220,11 +220,12 @@ Your task is to write a compelling introductory scene for the story.
 **Characters:** ${characterDescriptions}
 
 **Directives:**
-1.  **Set the Scene:** Write a compelling opening paragraph in ${input.lang} that establishes the setting and mood, based on the **Overall Plot Summary** and **Story Title**.
-2.  **Introduce the Heroes:** Introduce each character from the **Characters** list, weaving their description into the narrative.
-3.  **Present the Inciting Incident:** Conclude the text by describing the very first situation or challenge the party faces, which should align with the first scene's goal: "${plot.scenes[0].description}".
-4.  **Create Options:** Generate three clear, action-oriented options for the players to choose from as their first move.
-5.  **Return JSON:** Return EXACTLY a JSON object with the specified structure, identical to the standard scene generation.
+1.  **Protagonists:** The players are the protagonists of the story.
+2.  **Set the Scene:** Write a detailed opening paragraph in ${input.lang} that establishes the setting and mood, based on the **Overall Plot Summary** and **Story Title**. Describe the scene before the action starts.
+3.  **Introduce the Heroes:** Introduce each character from the **Characters** list, weaving their description into the narrative. Mention their roles and abilities. If there are any NPCs, introduce them as well.
+4.  **Present the Inciting Incident:** Conclude the text by describing the very first situation or challenge the party faces, which should align with the first scene's goal: "${plot.scenes[0].description}".
+5.  **Create Options:** Generate three clear, action-oriented options for the players to choose from as their first move.
+6.  **Return JSON:** Return EXACTLY a JSON object with the specified structure, identical to the standard scene generation.
 {
   "story": "Your introductory text (2-3 paragraphs).",
   "options": [
