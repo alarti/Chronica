@@ -23,6 +23,7 @@ function typewriter(element, text, speed = 50, callback = () => {}) {
   const timer = setInterval(() => {
     if (i < text.length) {
       element.innerHTML += text.charAt(i);
+      element.scrollTop = element.scrollHeight;
       i++;
     } else {
       clearInterval(timer);
@@ -156,7 +157,7 @@ async function generatePDF() {
 
         history.reverse(); // chronological order
 
-        for (const event of history) {
+        for (const [index, event] of history.entries()) {
             if (y > pageHeight - 20) { // Page break check
                 doc.addPage();
                 y = 20;
@@ -178,7 +179,12 @@ async function generatePDF() {
             }
 
             if (event.story) {
-                if (event.isEpilogue) {
+                if (index === 0) {
+                    doc.setFont(undefined, 'bold');
+                    doc.text("Introduction", margin, y);
+                    y += 7;
+                    doc.setFont(undefined, 'normal');
+                } else if (event.isEpilogue) {
                     doc.setFont(undefined, 'bold');
                     doc.text("Epilogue", margin, y);
                     y += 7;
@@ -262,8 +268,16 @@ function startTimer(durationInMinutes = 0) {
     if (timerInterval) clearInterval(timerInterval);
 
     if (durationInMinutes > 0) {
-        // Countdown
-        let totalSeconds = durationInMinutes * 60;
+        let totalSeconds;
+        if (gameState.remainingTime && gameState.remainingTime < durationInMinutes * 60) {
+            totalSeconds = gameState.remainingTime;
+            if (totalSeconds <= 0) {
+                alert("Time has run out! The timer will be restarted.");
+                totalSeconds = durationInMinutes * 60;
+            }
+        } else {
+            totalSeconds = durationInMinutes * 60;
+        }
 
         const updateCountdown = () => {
             if (totalSeconds < 0) {
@@ -274,6 +288,7 @@ function startTimer(durationInMinutes = 0) {
             const mins = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
             const secs = (totalSeconds % 60).toString().padStart(2, '0');
             timerElement.textContent = `${mins}:${secs}`;
+            gameState.remainingTime = totalSeconds;
             totalSeconds--;
         };
 
@@ -354,6 +369,7 @@ function renderSidePanel() {
   const inventoryItems = Object.entries(gameState.inventory || {}).map(([item, quantity]) => `<li>${item}: ${quantity}</li>`).join('');
 
   panel.innerHTML = `
+    <button id="close-panel-btn">X</button>
     <h3>Party Stats</h3>
     ${playerStatsHtml}
     <hr>
@@ -374,6 +390,7 @@ function renderRiddle(riddle) {
     appDiv.innerHTML = `
     <div class="scene-overlay"></div>
     <div id="subtitle-container">
+        <h2 class="riddle-title">Riddle</h2>
         <p id="story-text"></p>
         <div id="options-container" class="visible">
             <ul></ul>
@@ -440,7 +457,14 @@ function renderScene(scene) {
   const optionsContainer = document.getElementById('options-container');
 
   if (storyElement && optionsContainer) {
-    typewriter(storyElement, scene.story, 50, () => {
+    let storyText = scene.story;
+    if (gameState.sceneIndex === 0) {
+        const characterSheets = gameState.players.map(p => {
+            return `\n**${p.name}**\n*${p.race} ${p.class}*\n> ${p.description}`;
+        }).join('\n');
+        storyText = `**Character Sheets**\n${characterSheets}\n\n${storyText}`;
+    }
+    typewriter(storyElement, storyText, 50, () => {
       optionsContainer.classList.add('visible');
     });
   }
@@ -450,7 +474,7 @@ function renderScene(scene) {
     const currentPlayer = gameState.players[gameState.turn];
     const optionsList = document.querySelector("#options-container ul");
 
-    if (optionsList && currentPlayer.isAlive) {
+    if (optionsList && currentPlayer.isAlive && gameState.players.length > 1) {
         const passTurnLi = document.createElement('li');
         const passTurnBtn = document.createElement('button');
         passTurnBtn.id = 'pass-turn-btn';
@@ -568,7 +592,6 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
   // Advance the turn to the next living player
   advanceTurn();
   gameState.lastChoice = choice;
-  gameState.sceneIndex++; // Move to the next scene in the plot
 
   // Save the event that just concluded
   await saveEvent(currentStoryId, {
@@ -598,6 +621,7 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
   }
 
   try {
+    console.log("Trying to generate next scene...");
     // Check for special riddle turn
     const isRiddleTurn = gameState.round > 0 && (gameState.round % 3 === 0) && gameState.turn === 0;
     if (isRiddleTurn) {
@@ -605,6 +629,7 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
     }
 
     const sceneOrRiddle = await generateScene(gameState, { isRiddleTurn });
+    gameState.sceneIndex++; // Move to the next scene in the plot
 
     if (sceneOrRiddle.acertijo) {
         renderRiddle(sceneOrRiddle);
@@ -613,8 +638,25 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
     }
   } catch (error) {
     console.error("Failed to generate next scene:", error);
-    renderError("Could not continue your adventure.");
+    console.log("Rendering retry button...");
+    renderRetryButton(choice, stateDelta, storyText, imagePrompt);
   }
+}
+
+function renderRetryButton(choice, stateDelta, storyText, imagePrompt) {
+    const appDiv = document.getElementById('app');
+    if (!appDiv) return;
+    appDiv.innerHTML = `
+        <p>An error occurred. Please try again.</p>
+        <button id="retry-btn">Retry</button>
+    `;
+    document.getElementById('retry-btn').onclick = () => {
+        if (choice) {
+            advanceToNextScene(choice, stateDelta, storyText, imagePrompt);
+        } else {
+            showScreen('start-screen');
+        }
+    };
 }
 
 async function startGame(storyId, initialGameState, timeLimit = 0) {
@@ -634,6 +676,13 @@ async function startGame(storyId, initialGameState, timeLimit = 0) {
       sidePanel.classList.toggle('hidden');
       menuButton.classList.toggle('panel-open');
     };
+
+    sidePanel.addEventListener('click', (e) => {
+        if (e.target.id === 'close-panel-btn') {
+            sidePanel.classList.add('hidden');
+            menuButton.classList.remove('panel-open');
+        }
+    });
   }
 
   renderSidePanel();
@@ -642,12 +691,15 @@ async function startGame(storyId, initialGameState, timeLimit = 0) {
   if (gameState.sceneIndex === 0) {
       advanceToNextScene("The story begins.", {}, "Welcome to your story!");
   } else {
-      // If loading, just render the current state and wait for player.
-      // We can refetch the last scene from history if needed, or just show a generic message.
-      document.getElementById('app').innerHTML = `<p>Continue your adventure, ${gameState.players[gameState.turn].name}!</p>`;
-      // This part could be improved to re-render the last scene properly.
-      // For now, we'll just show the side panel and let the player take their turn.
-      // A full implementation would require re-rendering the last scene based on history.
+      // If loading, re-generate the last scene to continue the story
+      const history = await getHistory(currentStoryId, 1);
+      if (history.length > 0) {
+          const lastEvent = history[0];
+          advanceToNextScene(lastEvent.choice, lastEvent.stateDelta, lastEvent.story, lastEvent.imagePrompt);
+      } else {
+        // Fallback if history is empty for some reason
+        advanceToNextScene("The story continues...", {}, "");
+      }
   }
 }
 
@@ -725,7 +777,8 @@ async function handleNewStory(lang) {
                 flags: {},
                 worldState: {},
                 lastChoice: null,
-                usedRiddles: []
+                usedRiddles: [],
+                timeLimit: parseInt(timeLimit, 10)
             };
 
             // 3. Create the story in the database
@@ -736,7 +789,7 @@ async function handleNewStory(lang) {
 
         } catch (error) {
             console.error("Failed to start new story:", error);
-            renderError("Failed to generate the story. Please try again.");
+            renderRetryButton();
         } finally {
             submitBtn.textContent = 'Begin';
             submitBtn.disabled = false;
@@ -763,7 +816,7 @@ async function handleLoadStory(lang) {
       titleSpan.onclick = async () => {
         const fullStory = await getStory(story.id);
         if (fullStory && fullStory.gameState) {
-            startGame(fullStory.id, fullStory.gameState);
+            startGame(fullStory.id, fullStory.gameState, fullStory.gameState.timeLimit);
         } else {
             renderError(`Could not load story "${story.title}". It might be corrupted.`);
         }

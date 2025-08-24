@@ -176,9 +176,12 @@ const getRiddlePrompt = (input) => {
 
     return `
 You are a master of puzzles and riddles for the RPG “Chronica: Infinite Stories”.
-Your task is to generate a single, clever, and UNIQUE riddle or puzzle.
-The theme of the story is: "${input.storyTitle}". The riddle should fit this theme.
-The user's language is '${input.lang}'.
+Your task is to generate a single, clever, and UNIQUE riddle or puzzle for the current player.
+The riddle should be directed at the player whose turn it is.
+
+**Current Player:** ${JSON.stringify(input.players[input.turn])}
+**Story Theme:** "${input.storyTitle}"
+**Language:** '${input.lang}'
 ${usedRiddlesText}
 
 **Directives:**
@@ -220,11 +223,12 @@ Your task is to write a compelling introductory scene for the story.
 **Characters:** ${characterDescriptions}
 
 **Directives:**
-1.  **Set the Scene:** Write a compelling opening paragraph in ${input.lang} that establishes the setting and mood, based on the **Overall Plot Summary** and **Story Title**.
-2.  **Introduce the Heroes:** Introduce each character from the **Characters** list, weaving their description into the narrative.
-3.  **Present the Inciting Incident:** Conclude the text by describing the very first situation or challenge the party faces, which should align with the first scene's goal: "${plot.scenes[0].description}".
-4.  **Create Options:** Generate three clear, action-oriented options for the players to choose from as their first move.
-5.  **Return JSON:** Return EXACTLY a JSON object with the specified structure, identical to the standard scene generation.
+1.  **Perspective:** The story should be told from the perspective of the players, making them the protagonists. The first player is ${input.players[0].name}.
+2.  **Set the Scene:** Write a long and detailed opening (at least 3 paragraphs) in ${input.lang} that establishes the setting and mood, based on the **Overall Plot Summary** and **Story Title**. Describe the scene before the action starts in great detail.
+3.  **Introduce the Heroes:** Introduce each character from the **Characters** list, weaving their description into the narrative. Mention their roles, abilities, and how they look. If there are any NPCs, introduce them as well.
+4.  **Present the Inciting Incident:** Conclude the text by describing the very first situation or challenge the party faces, which should align with the first scene's goal: "${plot.scenes[0].description}".
+5.  **Create Options:** Generate three clear, action-oriented options for the players to choose from as their first move. The options should be phrased as actions the current player (${input.players[0].name}) can take. For example: "Jules, you can explore the cave".
+6.  **Return JSON:** Return EXACTLY a JSON object with the specified structure, identical to the standard scene generation.
 {
   "story": "Your introductory text (2-3 paragraphs).",
   "options": [
@@ -235,7 +239,7 @@ Your task is to write a compelling introductory scene for the story.
   "imagePrompt": "A vivid scene description for the introduction.",
   "sceneTags": ["introduction", "prologue"],
   "stateDelta": { "worldState": {} },
-  "ui": { "title": "The Adventure Begins", "toast": "Your story unfolds..." },
+  "ui": { "title": "Chapter 0: Introduction", "toast": "Your story unfolds..." },
   "credits": "Created by Alberto Arce."
 }
 `;
@@ -273,7 +277,7 @@ ${summary}
 
 **Party State:**
 - Players: ${JSON.stringify(input.players.map(p => ({name: p.name, race: p.race, class: p.class, isAlive: p.isAlive})))}
-- Current Turn: It is ${input.players[input.turn].name}'s turn to act.
+- Current Turn: It is ${input.players[input.turn].name}'s turn to act. The story and options should be focused on this character's actions and perspective. The options should be phrased as actions that ${input.players[input.turn].name} can take.
 - Last Choice: ${input.lastChoice || 'None'}
 - Story Theme: The story is titled "${input.storyTitle}". The entire narrative must strictly adhere to this theme.
 - Known World State: Use these details for consistency. ${JSON.stringify(input.worldState)}
@@ -285,9 +289,9 @@ Return EXACTLY a JSON object with the following structure (no markdown, no extra
 {
   "story": "A brief, direct narrative (max 80 words) in '${input.lang}'.",
   "options": [
-    {"text": "An action-oriented option in '${input.lang}'...", "isRisky": false, "stateDelta": {"risk": 5}},
-    {"text": "A risky option that requires a dice roll...", "isRisky": true, "stateDelta": {"risk": 20, "health": -5}},
-    {"text": "A puzzle-solving or investigative option...", "isRisky": false, "stateDelta": {"mana": -5}}
+    {"text": "An action-oriented option for ${input.players[input.turn].name} in '${input.lang}'...", "isRisky": false, "stateDelta": {"risk": 5}},
+    {"text": "A risky option for ${input.players[input.turn].name} that requires a dice roll...", "isRisky": true, "stateDelta": {"risk": 20, "health": -5}},
+    {"text": "A puzzle-solving or investigative option for ${input.players[input.turn].name}...", "isRisky": false, "stateDelta": {"mana": -5}}
   ],
   "imagePrompt": "A short, vivid scene description for illustration, using details from the world state.",
   "sceneTags": ["comma-free", "single", "word", "tags"],

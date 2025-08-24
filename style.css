@@ -170,9 +170,16 @@ body {
   object-fit: cover;
 }
 
-#app {
+#game-container {
   width: 100vw;
   height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
   position: relative;
   display: flex;
   align-items: center;
@@ -206,19 +213,66 @@ body {
 }
 
 #game-ui-container {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  z-index: 4;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    right: 1rem;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.top-bar-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.top-bar-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    pointer-events: none;
+}
+
+#game-ui-container > * {
+    pointer-events: all; /* But allow clicks on the actual UI elements */
 }
 
 #timer, #turn-indicator, #round-counter {
   font-family: var(--font-primary);
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   text-shadow: 2px 2px 4px var(--color-text-shadow);
+  background-color: rgba(0,0,0,0.5);
+  padding: 0.25rem 0.5rem;
+  border-radius: 5px;
+}
+
+#progress-container {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: rgba(0,0,0,0.5);
+    padding: 0.5rem;
+    border-radius: 5px;
+}
+
+#progress-bar {
+    flex-grow: 1;
+    height: 10px;
+    background-color: #555;
+    border: 1px solid #fff;
+    border-radius: 5px;
+}
+
+#progress-bar-fill {
+    height: 100%;
+    background-color: #2ecc71;
+    border-radius: 5px;
+    transition: width 0.5s ease-in-out;
 }
 
 #subtitle-container {
@@ -238,6 +292,9 @@ body {
   line-height: 1.6;
   margin-bottom: 2rem;
   min-height: 100px; /* Reserve space for typewriter */
+  max-height: 10em; /* Limit height to ~6 lines */
+  overflow-y: auto; /* Allow scrolling for long text */
+  padding-right: 1rem; /* Add some padding for the scrollbar */
 }
 
 #options-container {
@@ -339,6 +396,10 @@ body {
   transition: right 0.3s ease-in-out; /* Transition right property */
   padding: 1rem;
   overflow-y: auto;
+}
+
+#close-panel-btn {
+    display: none;
 }
 
 #side-panel.hidden {
@@ -727,4 +788,165 @@ body {
 #fixed-logo-icon img {
     width: 100%;
     height: 100%;
+}
+
+.riddle-title {
+    font-family: var(--font-primary);
+    font-size: 2rem;
+    color: var(--color-text-light);
+    text-shadow: 0 0 10px #fff;
+    margin-bottom: 1rem;
+}
+
+/* --- Responsive Design --- */
+@media (max-width: 768px) {
+    #start-screen h1 {
+        font-size: 2.5rem;
+    }
+
+    #start-screen button {
+        font-size: 1.2rem;
+        padding: 0.8rem 1.5rem;
+    }
+
+    .flags {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 1rem;
+    }
+
+    .flag-button img {
+        width: 60px;
+        height: 60px;
+    }
+
+    #language-selector h2 {
+        font-size: 2rem;
+    }
+
+    #subtitle-container {
+        padding: 1rem;
+        bottom: 5rem; /* Make space for progress bar */
+    }
+
+    #story-text {
+        font-size: 1.2rem;
+        line-height: 1.5;
+    }
+
+    #options-container {
+        margin-top: 1rem;
+    }
+
+    #options-container button, #custom-option-submit {
+        font-size: 0.9rem;
+        padding: 0.75rem;
+    }
+
+    #custom-option-container {
+        flex-direction: column;
+    }
+
+    #game-ui-container {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.5rem;
+    }
+
+    .top-bar-wrapper {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+        width: 100%;
+    }
+
+    #progress-container {
+        order: 2;
+        width: 100%;
+    }
+
+    #menu-button {
+        order: 1;
+    }
+
+     #timer, #turn-indicator, #round-counter {
+        font-size: 0.9rem;
+     }
+
+    #menu-button {
+        width: 35px;
+        height: 35px;
+        font-size: 1.2rem;
+    }
+
+    #side-panel {
+        width: 80%;
+        max-width: 300px;
+        border-left: none;
+        transition: transform 0.3s ease-in-out;
+        transform: translateX(100%);
+    }
+
+    #side-panel.hidden {
+       transform: translateX(100%);
+    }
+
+    #side-panel:not(.hidden) {
+        transform: translateX(0);
+    }
+
+
+    #close-panel-btn {
+        display: block;
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        background: none;
+        border: 1px solid #fff;
+        color: #fff;
+        font-size: 1.5rem;
+        cursor: pointer;
+        width: 35px;
+        height: 35px;
+        border-radius: 5px;
+    }
+
+    #menu-button.panel-open {
+        transform: translateX(-80vw);
+    }
+
+    #new-story-dialog h3 {
+        font-size: 2rem;
+    }
+
+    #new-story-dialog input, .player-name-input {
+        font-size: 1rem;
+        width: 90%;
+    }
+
+    #end-screen h2 {
+        font-size: 2.5rem;
+    }
+
+     #end-screen button {
+        font-size: 1.2rem;
+        padding: 0.8rem 1.2rem;
+     }
+
+    .end-screen-buttons {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    #fixed-logo-icon {
+        top: 0.5rem;
+        left: 0.5rem;
+        width: 40px;
+        height: 40px;
+    }
+
+    #progress-container {
+        width: 90%;
+        bottom: 0.5rem;
+    }
 }
