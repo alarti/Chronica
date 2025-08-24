@@ -255,9 +255,7 @@ body {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background-color: rgba(0,0,0,0.5);
-    padding: 0.5rem;
-    border-radius: 5px;
+    margin-bottom: 1rem;
 }
 
 #progress-bar {
@@ -860,10 +858,6 @@ body {
         width: 100%;
     }
 
-    #progress-container {
-        order: 2;
-        width: 100%;
-    }
 
     #menu-button {
         order: 1;
@@ -945,8 +939,27 @@ body {
         height: 40px;
     }
 
-    #progress-container {
-        width: 90%;
-        bottom: 0.5rem;
-    }
+}
+
+.intro-nav-buttons {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+}
+
+.intro-nav-buttons button {
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    border: 1px solid white;
+    padding: 10px 20px;
+    margin: 0 10px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.intro-nav-buttons button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
