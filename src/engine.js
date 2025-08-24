@@ -22,13 +22,41 @@
 
 // A hardcoded scene to use as a fallback if the API call fails.
 const fallbackScene = {
-  story: "You awaken in a dimly lit chamber, the air thick with the smell of dust and old stone. A single torch flickers on a nearby wall, casting long shadows that dance like phantoms. You don't remember how you got here. Three paths lie before you: a heavy oak door, a narrow stone staircase leading down, and a small, dark crevice in the wall.",
-  options: ["Try to open the heavy oak door.", "Descend the narrow stone staircase.", "Investigate the dark crevice."],
-  imagePrompt: "A mysterious, torch-lit stone chamber with a single flickering torch on the wall, revealing three potential paths: a large wooden door, a dark staircase, and a narrow crack in the wall.",
-  sceneTags: ["dungeon", "start", "mystery", "exploration"],
-  ui: { title: "The Awakening", toast: "Your story begins." },
-  stateDelta: { flags: { "awakened": true }, inventory: {}, affinity: {} },
-  credits: "Created by Alberto Arce."
+  "language": "en",
+  "scene_id": "fallback-awakening",
+  "title": "The Awakening",
+  "narrative": [
+    {
+      "speaker": "narrator",
+      "text": "You awaken in a dimly lit chamber, the air thick with the smell of dust and old stone. A single torch flickers on a nearby wall, casting long shadows that dance like phantoms.",
+      "voice": { "role": "narrator", "gender": "neutral", "age": "adult", "style": "mysterious", "accent": "en-US" },
+      "sentiment": "tension",
+      "urgent": false
+    },
+    {
+        "speaker": "narrator",
+        "text": "You don't remember how you got here. Three paths lie before you: a heavy oak door, a narrow stone staircase leading down, and a small, dark crevice in the wall.",
+        "voice": { "role": "narrator", "gender": "neutral", "age": "adult", "style": "mysterious", "accent": "en-US" },
+        "sentiment": "asombro",
+        "urgent": false
+    }
+  ],
+  "characters": [],
+  "riddle": { "present": false, "prompt": "", "answer_hint": "" },
+  "choices": [
+    { "id": "A", "text": "Try to open the heavy oak door." },
+    { "id": "B", "text": "Descend the narrow stone staircase." },
+    { "id": "C", "text": "Investigate the dark crevice." }
+  ],
+  "image_prompt": "A mysterious, torch-lit stone chamber with a single flickering torch on the wall, revealing three potential paths: a large wooden door, a dark staircase, and a narrow crack in the wall.",
+  "timers": { "suggested_ms_per_block": 4500, "accelerate_if_urgent_factor": 0.8 },
+  "meta": {
+    "round": 1,
+    "mode": "solo",
+    "players": ["Player"],
+    "story_tags": ["dungeon", "start", "mystery"],
+    "safety": { "age_rating": "PG-13", "content_flags": ["violence-mild"] }
+  }
 };
 
 async function getSummary(history) {
@@ -173,84 +201,130 @@ const getRiddlePrompt = (input) => {
     const usedRiddlesText = input.usedRiddles.length > 0
         ? `\n**IMPORTANT:** Do not repeat any riddles from this list:\n- ${input.usedRiddles.join('\n- ')}`
         : '';
+    const currentPlayer = input.players[input.turn];
+    const characterSlug = (name) => name.toLowerCase().replace(/\s+/g, '-');
+    const charactersForPrompt = input.players.map(p => ({
+        id: `personaje:${characterSlug(p.name)}`,
+        display_name: p.name,
+        voice: { role: 'hero', gender: 'neutral', age: 'adult', style: 'neutral', accent: 'auto' },
+        traits: [p.race, p.class, ...(p.isAlive ? [] : ['defeated'])]
+    }));
 
     return `
 You are a master of puzzles and riddles for the RPG “Chronica: Infinite Stories”.
-Your task is to generate a single, clever, and UNIQUE riddle or puzzle for the current player.
-The riddle should be directed at the player whose turn it is.
+Your task is to generate a single, clever, and UNIQUE riddle or puzzle for the current player, and wrap it in the standard scene JSON format.
 
-**Current Player:** ${JSON.stringify(input.players[input.turn])}
+**Current Player:** ${currentPlayer.name}
 **Story Theme:** "${input.storyTitle}"
 **Language:** '${input.lang}'
 ${usedRiddlesText}
 
 **Directives:**
-1.  Generate a single riddle. This can be a classic word riddle, a simple math puzzle, or a logic problem.
-2.  Provide exactly three options for the answer.
-3.  One option must be the correct answer. The other two must be plausible but incorrect.
-4.  Return EXACTLY a JSON object with the following structure (no markdown, no extra keys):
+1.  Create a single riddle and three possible answers (one correct).
+2.  Embed this riddle inside a complete scene object.
+3.  The \`narrative\` should introduce the riddle.
+4.  The \`riddle\` object's "present" field must be true.
+5.  The \`choices\` should be the possible answers to the riddle.
+6.  Return EXACTLY a JSON object following the main schema.
+
 {
-  "acertijo": "The text of the riddle goes here.",
-  "opciones": [
-    {
-      "texto": "A correct answer.",
-      "correcta": true
-    },
-    {
-      "texto": "An incorrect answer.",
-      "correcta": false
-    },
-    {
-      "texto": "Another incorrect answer.",
-      "correcta": false
-    }
-  ]
+  "language": "${input.lang}",
+  "scene_id": "riddle-scene-${input.round}",
+  "title": "A Challenge Appears",
+  "narrative": [{
+    "speaker": "narrator",
+    "text": "Suddenly, a mysterious voice echoes in your mind, presenting a challenge.",
+    "voice": { "role": "narrator", "gender": "neutral", "age": "senior", "style": "mysterious", "accent": "${input.lang === 'en' ? 'en-GB' : input.lang + '-' + input.lang.toUpperCase()}" },
+    "sentiment": "asombro",
+    "urgent": false
+  }],
+  "characters": ${JSON.stringify(charactersForPrompt)},
+  "riddle": {
+    "present": true,
+    "prompt": "The text of the riddle goes here.",
+    "answer_hint": "A brief hint for the riddle's answer."
+  },
+  "choices": [
+    { "id": "A", "text": "A plausible but incorrect answer.", "isCorrect": false },
+    { "id": "B", "text": "The correct answer.", "isCorrect": true },
+    { "id": "C", "text": "Another incorrect answer.", "isCorrect": false }
+  ],
+  "image_prompt": "A mysterious scene with a glowing rune or an ancient talking statue posing a riddle.",
+  "timers": { "suggested_ms_per_block": 4500, "accelerate_if_urgent_factor": 0.8 },
+  "meta": {
+    "round": ${input.round},
+    "mode": "${input.players.length > 1 ? 'multiplayer' : 'solo'}",
+    "players": ${JSON.stringify(input.players.map(p => p.name))},
+    "story_tags": ["riddle", "puzzle"],
+    "safety": { "age_rating": "PG-13", "content_flags": [] }
+  }
 }
 `;
 };
 
 const getFirstScenePrompt = (input) => {
     const plot = input.plot;
-    const characterDescriptions = JSON.stringify(input.players.map(p => ({ name: p.name, race: p.race, class: p.class, description: p.description })));
+    const characterSlug = (name) => name.toLowerCase().replace(/\s+/g, '-');
+    const charactersForPrompt = input.players.map(p => ({
+        id: `personaje:${characterSlug(p.name)}`,
+        display_name: p.name,
+        voice: { role: 'hero', gender: 'neutral', age: 'adult', style: 'neutral', accent: 'auto' },
+        traits: [p.race, p.class, p.description]
+    }));
 
     return `
-You are the master storyteller and trailer director for the text-based RPG “Chronica: Infinite Stories”.
-Your task is to create a compelling introductory "movie trailer" for the story. This trailer will be presented as a sequence of scenes, each with its own text and image.
+You are the master storyteller for the text-based RPG “Chronica: Infinite Stories”.
+Your task is to create a compelling introductory "trailer" for the story, formatted for TTS.
 
 **Language:** ${input.lang}
 **Story Title:** "${plot.title}"
 **Overall Plot Summary:** ${plot.summary}
-**Characters:** ${characterDescriptions}
+**Characters:** ${JSON.stringify(charactersForPrompt)}
 
 **Directives:**
-1.  **Trailer Structure:** Create a sequence of introductory scenes. This sequence should be an array in a field called "intro_scenes".
-2.  **Scene Setting:** The first 2-3 scenes in the array should set the mood and describe the world based on the **Overall Plot Summary** and **Story Title**. Each of these scenes must be an object with "type": "intro", a short paragraph of "text", and a corresponding "imagePrompt".
-3.  **Character Introduction:** After setting the scene, create one dedicated scene for EACH character in the **Characters** list. This scene should be an object with "type": "character", the character's name in a "character_name" field, and text that introduces them by name, weaving in their description, race, and class. Each character introduction scene must have its own unique, descriptive "imagePrompt" that visually represents the character.
-4.  **Inciting Incident:** The final scene in the sequence should describe the very first situation or challenge the party faces. This should align with the first scene's goal: "${plot.scenes[0].description}". This scene also needs "text" and an "imagePrompt", and its type should be "incident".
-5.  **Player Options:** After the trailer sequence, provide three clear, action-oriented options for the first player, ${input.players[0].name}, to choose from. These should be in an "options" array at the top level of the JSON.
-6.  **Return JSON:** Return EXACTLY a JSON object with the following structure. Do not use markdown or add extra keys.
+1.  **Narrative Structure:** Create a sequence of narrative blocks for the "narrative" array.
+2.  **Scene Setting:** The first 2-3 blocks should set the mood and describe the world based on the Plot Summary and Title. Use the "narrator" speaker.
+3.  **Character Introduction:** After setting the scene, create one dedicated block for EACH character, introducing them by name and weaving in their description. Use "narrator" as the speaker.
+4.  **Inciting Incident:** The final block should describe the first challenge, aligning with the first scene's goal: "${plot.scenes[0].description}".
+5.  **Choices:** Provide three clear, action-oriented choices for the first player, ${input.players[0].name}.
+6.  **Return JSON:** Return EXACTLY a JSON object following the main schema.
 
 {
-  "intro_scenes": [
+  "language": "${input.lang}",
+  "scene_id": "introduction",
+  "title": "${plot.title}",
+  "narrative": [
     {
-      "type": "intro",
-      "text": "A paragraph setting the scene...",
-      "imagePrompt": "A vivid image prompt for this part of the scene."
+      "speaker": "narrator",
+      "text": "A paragraph setting the scene (max 240 chars)...",
+      "voice": { "role": "narrator", "gender": "neutral", "age": "adult", "style": "epic", "accent": "${input.lang === 'en' ? 'en-GB' : input.lang + '-' + input.lang.toUpperCase()}" },
+      "sentiment": "asombro",
+      "urgent": false
     },
     {
-      "type": "character",
-      "character_name": "PlayerName1",
-      "text": "A paragraph introducing this character...",
-      "imagePrompt": "A vivid image prompt for this character, matching their description."
+      "speaker": "narrator",
+      "text": "An introduction for ${input.players[0].name}, the ${input.players[0].race} ${input.players[0].class}...",
+      "voice": { "role": "narrator", "gender": "neutral", "age": "adult", "style": "epic", "accent": "${input.lang === 'en' ? 'en-GB' : input.lang + '-' + input.lang.toUpperCase()}" },
+      "sentiment": "determinacion",
+      "urgent": false
     }
   ],
-  "options": [
-    {"text": "First action option for ${input.players[0].name}...", "isRisky": false, "stateDelta": {}},
-    {"text": "Second action option for ${input.players[0].name}...", "isRisky": false, "stateDelta": {}},
-    {"text": "Third action option for ${input.players[0].name}...", "isRisky": false, "stateDelta": {}}
+  "characters": ${JSON.stringify(charactersForPrompt)},
+  "riddle": { "present": false, "prompt": "", "answer_hint": "" },
+  "choices": [
+    { "id": "A", "text": "First action option for ${input.players[0].name}..." },
+    { "id": "B", "text": "Second action option..." },
+    { "id": "C", "text": "Third action option..." }
   ],
-  "ui": { "title": "Chapter 0: Introduction" },
-  "credits": "Created by Alberto Arce."
+  "image_prompt": "An epic, cinematic image representing the story's title and main theme.",
+  "timers": { "suggested_ms_per_block": 5000, "accelerate_if_urgent_factor": 0.8 },
+  "meta": {
+    "round": 0,
+    "mode": "${input.players.length > 1 ? 'multiplayer' : 'solo'}",
+    "players": ${JSON.stringify(input.players.map(p => p.name))},
+    "story_tags": ["introduction"],
+    "safety": { "age_rating": "PG-13", "content_flags": [] }
+  }
 }
 `;
 };
@@ -266,50 +340,76 @@ const getPrompt = (input, summary, options = {}) => {
       return getFirstScenePrompt(input);
   }
 
-    const currentSceneGoal = input.plot?.scenes[input.sceneIndex]?.description || "The story continues, with the heroes charting their own path.";
+  const currentSceneGoal = input.plot?.scenes[input.sceneIndex]?.description || "The story continues, with the heroes charting their own path.";
+  const currentPlayer = input.players[input.turn];
+  const characterSlug = (name) => name.toLowerCase().replace(/\s+/g, '-');
+
+  const charactersForPrompt = input.players.map(p => ({
+    id: `personaje:${characterSlug(p.name)}`,
+    display_name: p.name,
+    voice: { role: 'hero', gender: 'neutral', age: 'adult', style: 'neutral', accent: 'auto' },
+    traits: [p.race, p.class, ...(p.isAlive ? [] : ['defeated'])]
+  }));
 
   return `
-You are the narrative engine for a game called “Chronica: Infinite Stories” by Alberto Arce.
-Your purpose is to generate fast-paced, engaging, and challenging narrative scenes.
-The user's chosen language is '${input.lang}'. All output must be in this language.
-The content must be family-friendly.
+You are the narrative engine for Chronica: Infinite Stories, designed for web-based Text-to-Speech (TTS) output.
+Your response MUST be a single, valid JSON object that strictly adheres to the schema below. Do not include comments or any text outside the JSON.
 
 **Core Directives:**
-1.  **React to the Last Action:** The user's last action was: "${input.lastChoice}". The "story" you generate next MUST be a direct and logical consequence of this action. This is the most important rule.
-2.  **Be Direct and Action-Oriented:** Focus on creating immediate challenges. Introduce enemies, obstacles, and conflicts frequently. The narrative should be concise and to the point, avoiding lengthy descriptions.
-3.  **Introduce Puzzles and Riddles:** Regularly include logical puzzles, riddles, or environmental challenges. When creating a puzzle, ensure some of the provided \`options\` are incorrect attempts at solving it. These incorrect options should result in a negative \`stateDelta\`, such as \`{"health": -10}\`, to represent a penalty.
-4.  **Maintain Consistency:**
-    -   **Characters:** Any characters introduced must remain consistent in their appearance, personality, and name.
-    -   **Visuals:** Image prompts must maintain a style that is consistent with the story's theme and title.
+1.  **React to the Last Action:** The player's last action was: "${input.lastChoice}". The scene you generate MUST be a direct and logical consequence of this action.
+2.  **TTS Segmentation:** The main narrative must be an array of blocks, each with a maximum of 240 characters, ready for continuous TTS playback.
+3.  **Voice & Sentiment:** Assign a voice, sentiment, and urgency to every narrative block. Keep voices consistent for each character.
+4.  **Current Player Focus:** It is ${currentPlayer.name}'s turn. The story and choices should focus on their perspective.
 
 **Story So Far (Summary):**
 ${summary}
 
 **Party State:**
-- Players: ${JSON.stringify(input.players.map(p => ({name: p.name, race: p.race, class: p.class, isAlive: p.isAlive})))}
-- Current Turn: It is ${input.players[input.turn].name}'s turn to act. The story and options should be focused on this character's actions and perspective. The options should be phrased as actions that ${input.players[input.turn].name} can take.
-- Last Choice: ${input.lastChoice || 'None'}
-- Story Theme: The story is titled "${input.storyTitle}". The entire narrative must strictly adhere to this theme.
-- Known World State: Use these details for consistency. ${JSON.stringify(input.worldState)}
-- **Current Scene Goal:** The current objective for the heroes is: "${currentSceneGoal}". Your generated scene must be a step towards accomplishing this goal. As the story progresses (higher scene index out of total scenes), the narrative should build towards a climax and conclusion based on the overall plot.
+- Characters: ${JSON.stringify(charactersForPrompt)}
+- Current Turn: ${currentPlayer.name}
+- Story Theme: "${input.storyTitle}"
+- Language: '${input.lang}'
+- Current Scene Goal: "${currentSceneGoal}"
 
 **Your Task:**
-Generate the NEXT scene that logically follows the "Last Choice" and moves the story towards the "Current Scene Goal". Update the world state with any new characters, locations, or key items.
-Return EXACTLY a JSON object with the following structure (no markdown, no extra keys):
+Generate the NEXT scene. Return EXACTLY a JSON object with the following structure.
+
 {
-  "story": "A brief, direct narrative (max 80 words) in '${input.lang}'.",
-  "options": [
-    {"text": "An action-oriented option for ${input.players[input.turn].name} in '${input.lang}'...", "isRisky": false, "stateDelta": {"risk": 5}},
-    {"text": "A risky option for ${input.players[input.turn].name} that requires a dice roll...", "isRisky": true, "stateDelta": {"risk": 20, "health": -5}},
-    {"text": "A puzzle-solving or investigative option for ${input.players[input.turn].name}...", "isRisky": false, "stateDelta": {"mana": -5}}
+  "language": "${input.lang}",
+  "scene_id": "a-kebab-case-scene-id-describing-the-scene",
+  "title": "A short, evocative scene title in '${input.lang}'",
+  "narrative": [
+    {
+      "speaker": "narrator",
+      "text": "A short narrative block describing the consequences of the last action (max 240 chars).",
+      "voice": { "role": "narrator", "gender": "neutral", "age": "adult", "style": "mysterious", "accent": "${input.lang === 'en' ? 'en-GB' : input.lang + '-' + input.lang.toUpperCase()}" },
+      "sentiment": "tension",
+      "urgent": false
+    },
+    {
+      "speaker": "personaje:${characterSlug(currentPlayer.name)}",
+      "text": "A line of dialogue from ${currentPlayer.name} reacting to the situation.",
+      "voice": { "role": "hero", "gender": "neutral", "age": "adult", "style": "determined", "accent": "${input.lang === 'en' ? 'en-US' : input.lang + '-' + input.lang.toUpperCase()}" },
+      "sentiment": "determinacion",
+      "urgent": false
+    }
   ],
-  "imagePrompt": "A short, vivid scene description for illustration, using details from the world state.",
-  "sceneTags": ["comma-free", "single", "word", "tags"],
-  "stateDelta": {
-    "worldState": { "new_character_name": "description", "new_location_name": "description" }
-  },
-  "ui": { "title": "Short scene title in '${input.lang}'", "toast": "1 short line reacting to last choice in '${input.lang}'" },
-  "credits": "Created by Alberto Arce."
+  "characters": ${JSON.stringify(charactersForPrompt)},
+  "riddle": { "present": false, "prompt": "", "answer_hint": "" },
+  "choices": [
+    { "id": "A", "text": "An action-oriented choice for ${currentPlayer.name}." },
+    { "id": "B", "text": "A different, concise choice." },
+    { "id": "C", "text": "A third option, possibly investigative or social." }
+  ],
+  "image_prompt": "A brief, visual prompt for an image generator, under 140 characters, matching the narrative.",
+  "timers": { "suggested_ms_per_block": 4500, "accelerate_if_urgent_factor": 0.8 },
+  "meta": {
+    "round": ${input.round},
+    "mode": "${input.players.length > 1 ? 'multiplayer' : 'solo'}",
+    "players": ${JSON.stringify(input.players.map(p => p.name))},
+    "story_tags": ["adventure", "dynamic"],
+    "safety": { "age_rating": "PG-13", "content_flags": ["violence-mild", "no-sexual-content"] }
+  }
 }
 `;
 };
@@ -338,32 +438,25 @@ export async function generateScene(input, options = {}) {
 
     if (!response.ok) {
       console.error(`API request failed with status ${response.status}`);
-      if (options.isRiddleTurn) {
-        return { acertijo: "The API failed. What is the answer to life, the universe, and everything?", opciones: [{texto: "42", correcta: true}, {texto: "24", correcta: false}, {texto: "Potato", correcta: false}] };
-      }
       return fallbackScene;
     }
 
     const result = await response.json();
     const jsonResponseString = result.choices[0].message.content;
-    const sceneOrRiddle = JSON.parse(jsonResponseString);
 
-    // If it's a regular scene, ensure it has the credits.
-    if (sceneOrRiddle.story) {
-        sceneOrRiddle.credits = "Created by Alberto Arce.";
+    // Attempt to parse the JSON, but be ready to catch errors.
+    const scene = JSON.parse(jsonResponseString);
+
+    // Basic validation to ensure the response is in the new format.
+    if (!scene.narrative || !scene.choices) {
+        console.error("API response is not in the expected TTS format. Using fallback.");
+        return fallbackScene;
     }
 
-    return sceneOrRiddle;
+    return scene;
 
   } catch (error) {
     console.error("An error occurred while fetching or parsing the scene:", error);
-    // If it was a riddle turn, we can't return a scene, so we return a simple riddle fallback.
-    if (options.isRiddleTurn) {
-        return {
-            acertijo: "The API failed. What is the answer to life, the universe, and everything?",
-            opciones: [{texto: "42", correcta: true}, {texto: "24", correcta: false}, {texto: "Potato", correcta: false}]
-        };
-    }
     return fallbackScene;
   }
 }

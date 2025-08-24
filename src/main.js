@@ -1,3 +1,4 @@
+import ttsManager from './tts.js';
 import { generateScene, generateCharacters, generateEnding, generatePlot } from './engine.js';
 import { initDB, createNewStory, getAllStories, saveEvent, getHistory, deleteStory, updateStory, getStory } from './database.js';
 
@@ -491,136 +492,22 @@ function attachOptionListeners(scene) {
     }, 0);
 }
 
-async function renderIntroTrailer(intro) {
-    const appDiv = document.getElementById('app');
-    if (!appDiv) {
-        console.error("Could not find #app element in the DOM.");
-        return;
-    }
+function attachRiddleListeners(scene) {
+    document.querySelectorAll('.option-button').forEach(button => {
+        button.addEventListener('click', (event) => {
+            const optionIndex = parseInt(event.target.dataset.index, 10);
+            const chosenOption = scene.choices[optionIndex];
 
-    let currentIndex = 0;
-    const imageUrlBase = 'https://image.pollinations.ai/prompt';
+            // The corrected prompt provides `isCorrect`
+            const isCorrect = chosenOption.isCorrect || false;
+            showRiddleFeedback(isCorrect);
 
-    function renderCurrentIntroScene() {
-        const trailerScene = intro.intro_scenes[currentIndex];
-        const fullUrl = `${imageUrlBase}/${encodeURIComponent(trailerScene.imagePrompt)}`;
-        const backgroundStyle = `style="background-image: url('${fullUrl}');"`;
-
-        let textHtml = `<p id="story-text"></p>`;
-        if (trailerScene.type === 'character') {
-            textHtml = `<h2>${trailerScene.character_name}</h2>` + textHtml;
-        }
-
-        const navButtons = `
-            <div class="intro-nav-buttons">
-                <button id="intro-back-btn" ${currentIndex === 0 ? 'disabled' : ''}>Back</button>
-                <button id="intro-next-btn">Next</button>
-            </div>
-        `;
-
-        appDiv.innerHTML = `
-            <div class="scene-background" ${backgroundStyle}></div>
-            <div class="scene-overlay"></div>
-            <div id="subtitle-container">
-                ${textHtml}
-            </div>
-            ${navButtons}
-        `;
-
-        const storyElement = document.getElementById('story-text');
-        typewriter(storyElement, trailerScene.text, 50);
-
-        document.getElementById('intro-next-btn').onclick = () => {
-            if (currentIndex < intro.intro_scenes.length - 1) {
-                currentIndex++;
-                renderCurrentIntroScene();
+            if (isCorrect) {
+                advanceToNextScene("You solved the riddle correctly!", { mana: 15 });
             } else {
-                // Last scene, transition to game
-                showPlayerUpScreen();
+                advanceToNextScene("You answered the riddle incorrectly and feel a sharp pain.", { health: -15 });
             }
-        };
-
-        document.getElementById('intro-back-btn').onclick = () => {
-            if (currentIndex > 0) {
-                currentIndex--;
-                renderCurrentIntroScene();
-            }
-        };
-    }
-
-    async function showPlayerUpScreen() {
-        const currentPlayer = gameState.players[gameState.turn];
-        appDiv.innerHTML = `
-            <div class="scene-background" style="background-color: #000;"></div>
-            <div class="scene-overlay"></div>
-            <div id="subtitle-container" style="text-align: center;">
-                <h1 class="player-turn-title">Next up: ${currentPlayer.name}</h1>
-            </div>
-        `;
-        await new Promise(resolve => setTimeout(resolve, 4000));
-        renderFirstOptions();
-    }
-
-    function renderFirstOptions() {
-        const lastScene = intro.intro_scenes[intro.intro_scenes.length - 1];
-        const fullUrl = `${imageUrlBase}/${encodeURIComponent(lastScene.imagePrompt)}`;
-        const backgroundStyle = `style="background-image: url('${fullUrl}')"`;
-        const optionsHtml = intro.options.map((option, index) => {
-            return `<li><button class="option-button" data-index="${index}" data-is-risky="${option.isRisky || false}">${option.text}</button></li>`;
-        }).join('');
-
-        appDiv.innerHTML = `
-            <div class="scene-background" ${backgroundStyle}></div>
-            <div class="scene-overlay"></div>
-            <div id="subtitle-container">
-                <div id="options-container" class="visible">
-                    <ul>${optionsHtml}</ul>
-                    <div id="custom-option-container">
-                        <input type="text" id="custom-option-input" placeholder="Or type your own action...">
-                        <button id="custom-option-submit">Submit</button>
-                    </div>
-                </div>
-                <p id="story-text">${lastScene.text}</p>
-            </div>
-        `;
-        attachOptionListeners(intro);
-    }
-
-    renderCurrentIntroScene();
-}
-
-function renderRiddle(riddle) {
-    gameState.usedRiddles.push(riddle.acertijo);
-    const appDiv = document.getElementById('app');
-    appDiv.innerHTML = `
-    <div class="scene-overlay"></div>
-    <div id="subtitle-container">
-        <h2 class="riddle-title">Riddle</h2>
-        <p id="story-text"></p>
-        <div id="options-container" class="visible">
-            <ul></ul>
-        </div>
-    </div>`;
-
-    const riddleText = document.getElementById('story-text');
-    typewriter(riddleText, riddle.acertijo);
-
-    const optionsList = document.querySelector("#options-container ul");
-    riddle.opciones.forEach(option => {
-        const li = document.createElement('li');
-        const button = document.createElement('button');
-        button.className = 'option-button';
-        button.textContent = option.texto;
-        button.onclick = () => {
-            showRiddleFeedback(option.correcta);
-            if (option.correcta) {
-                advanceToNextScene("You solved the riddle correctly!", {mana: 15});
-            } else {
-                advanceToNextScene("You answered the riddle incorrectly and feel a sharp pain.", {health: -15});
-            }
-        };
-        li.appendChild(button);
-        optionsList.appendChild(li);
+        });
     });
 }
 
@@ -631,22 +518,34 @@ function renderScene(scene) {
     return;
   }
 
-  const optionsHtml = scene.options.map((option, index) => {
-    return `<li><button class="option-button" data-index="${index}" data-is-risky="${option.isRisky || false}">${option.text}</button></li>`;
+  // Handle both new `choices` and old `options` format for compatibility
+  const options = scene.choices || scene.options || [];
+  const optionsHtml = options.map((option, index) => {
+    const text = option.text;
+    const isRisky = option.isRisky || false;
+    const id = option.id || index;
+    return `<li><button class="option-button" data-index="${index}" data-id="${id}" data-is-risky="${isRisky}">${text}</button></li>`;
   }).join('');
 
   let backgroundStyle = '';
   const imageUrlBase = 'https://image.pollinations.ai/prompt';
-  if (scene.imagePrompt) {
-    const fullUrl = `${imageUrlBase}/${encodeURIComponent(scene.imagePrompt)}`;
+  const imagePrompt = scene.image_prompt || scene.imagePrompt;
+  if (imagePrompt) {
+    const fullUrl = `${imageUrlBase}/${encodeURIComponent(imagePrompt)}`;
     backgroundStyle = `style="background-image: url('${fullUrl}')"`;
   }
+
+  const riddleHtml = (scene.riddle && scene.riddle.present)
+    ? `<h2 class="riddle-title">Riddle</h2><p id="riddle-prompt">${scene.riddle.prompt}</p>`
+    : '';
 
   appDiv.innerHTML = `
     <div class="scene-background" ${backgroundStyle}></div>
     <div class="scene-overlay"></div>
-
     <div id="subtitle-container">
+        ${riddleHtml}
+        <p id="story-text"></p>
+        <p id="speaker-name"></p>
         <div id="options-container">
             <ul>${optionsHtml}</ul>
             <div id="custom-option-container">
@@ -654,20 +553,47 @@ function renderScene(scene) {
                 <button id="custom-option-submit">Submit</button>
             </div>
         </div>
-        <p id="story-text"></p>
     </div>
   `;
 
   const storyElement = document.getElementById('story-text');
+  const speakerElement = document.getElementById('speaker-name');
   const optionsContainer = document.getElementById('options-container');
 
   if (storyElement && optionsContainer) {
-    typewriter(storyElement, scene.story, 50, () => {
-      optionsContainer.classList.add('visible');
-    });
-  }
+    const onBlockStart = (block) => {
+        if (speakerElement) {
+            const character = scene.characters?.find(c => c.id === block.speaker);
+            speakerElement.textContent = character ? character.display_name : '';
+        }
+        typewriter(storyElement, block.text, 40);
+    };
 
-  attachOptionListeners(scene);
+    const onSceneEnd = () => {
+        optionsContainer.classList.add('visible');
+        if (scene.riddle && scene.riddle.present) {
+            attachRiddleListeners(scene);
+        } else {
+            attachOptionListeners(scene);
+        }
+    };
+
+    // Use TTS for new `narrative` format, otherwise fallback to old `story` property
+    if (scene.narrative && scene.narrative.length > 0) {
+        ttsManager.playScene(scene.narrative, onBlockStart, onSceneEnd);
+    } else if (scene.story) { // Fallback for old scene format
+        typewriter(storyElement, scene.story, 40, onSceneEnd);
+    } else { // If there's no narrative, just show options
+        onSceneEnd();
+    }
+  } else {
+    // Fallback if the main elements don't exist
+    if (scene.riddle && scene.riddle.present) {
+        attachRiddleListeners(scene);
+    } else {
+        attachOptionListeners(scene);
+    }
+  }
 }
 
 function advanceTurn() {
@@ -724,6 +650,7 @@ async function handleRiskyChoice(actionText, stateDelta, storyText, imagePrompt)
 }
 
 async function advanceToNextScene(choice, stateDelta, storyText = '', imagePrompt = '') {
+  ttsManager.stop();
   console.log(`Player chose: ${choice}`);
   document.getElementById('app').innerHTML = '<p>Loading next scene...</p>';
 
@@ -736,12 +663,14 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
   gameState.lastChoice = choice;
 
   // Save the event that just concluded
+  // The new format doesn't have a single `storyText` or `imagePrompt` at this level.
+  // This part of the saving logic may need to be revised later if PDF export is to be preserved.
   await saveEvent(currentStoryId, {
     turn: gameState.turn, // Save the turn number
     choice: choice,
     stateDelta: stateDelta,
-    story: storyText,
-    imagePrompt: imagePrompt
+    story: storyText, // Legacy
+    imagePrompt: imagePrompt // Legacy
   });
 
   // Save the entire game state
@@ -764,32 +693,22 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
 
   try {
     console.log("Trying to generate next scene...");
-    // Check for special riddle turn
     const isRiddleTurn = gameState.round > 0 && (gameState.round % 3 === 0) && gameState.turn === 0;
     if (isRiddleTurn) {
         console.log("--- Generating a special riddle! ---");
     }
 
-    const sceneOrRiddle = await generateScene(gameState, { isRiddleTurn });
+    const scene = await generateScene(gameState, { isRiddleTurn });
 
-    // The intro is a special, one-time event.
-    // It doesn't increment the sceneIndex in the same way.
-    if (sceneOrRiddle.intro_scenes) {
-        // This is a special, one-time event that contains the intro trailer data.
-        // We need to save this data so we can use it for the PDF export later.
-        await updateStory(currentStoryId, { introData: sceneOrRiddle });
-
-        renderIntroTrailer(sceneOrRiddle);
-
-        // We don't increment sceneIndex here because the intro isn't part of the main plot progression.
-        // The first real choice will advance the sceneIndex.
-    } else if (sceneOrRiddle.acertijo) {
-        gameState.sceneIndex++;
-        renderRiddle(sceneOrRiddle);
-    } else {
-        gameState.sceneIndex++;
-        renderScene(sceneOrRiddle);
+    // The intro is a special case. The new prompt for the first scene returns a standard scene object.
+    // The old `renderIntroTrailer` is complex and will be replaced by just calling `renderScene`.
+    if (gameState.sceneIndex === 0) {
+        await updateStory(currentStoryId, { introData: scene }); // Save for PDF
     }
+
+    gameState.sceneIndex++;
+    renderScene(scene); // The new renderScene is robust enough to handle different scene types.
+
   } catch (error) {
     console.error("Failed to generate next scene:", error);
     console.log("Rendering retry button...");
@@ -1010,6 +929,15 @@ async function handleLoadStory(lang) {
 async function main() {
   await initDB();
   showScreen('language-selector'); // Start at the language selector
+
+  const ttsToggleButton = document.getElementById('tts-toggle-btn');
+  if (ttsToggleButton) {
+      ttsToggleButton.onclick = () => {
+          const isCurrentlyEnabled = ttsManager.enabled;
+          ttsManager.setEnabled(!isCurrentlyEnabled);
+          ttsToggleButton.textContent = ttsManager.enabled ? '🔊' : '🔇';
+      };
+  }
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
