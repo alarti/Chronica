@@ -646,7 +646,7 @@ async function startGame(storyId, initialGameState, timeLimit = 0) {
       menuButton.classList.toggle('panel-open');
     };
 
-    panel.addEventListener('click', (e) => {
+    sidePanel.addEventListener('click', (e) => {
         if (e.target.id === 'close-panel-btn') {
             sidePanel.classList.add('hidden');
             menuButton.classList.remove('panel-open');
