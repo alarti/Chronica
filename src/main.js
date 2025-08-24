@@ -580,7 +580,6 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
   // Advance the turn to the next living player
   advanceTurn();
   gameState.lastChoice = choice;
-  gameState.sceneIndex++; // Move to the next scene in the plot
 
   // Save the event that just concluded
   await saveEvent(currentStoryId, {
@@ -618,6 +617,7 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
     }
 
     const sceneOrRiddle = await generateScene(gameState, { isRiddleTurn });
+    gameState.sceneIndex++; // Move to the next scene in the plot
 
     if (sceneOrRiddle.acertijo) {
         renderRiddle(sceneOrRiddle);
