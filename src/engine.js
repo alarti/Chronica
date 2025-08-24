@@ -227,7 +227,7 @@ Your task is to write a compelling introductory scene for the story.
 2.  **Set the Scene:** Write a long and detailed opening (at least 3 paragraphs) in ${input.lang} that establishes the setting and mood, based on the **Overall Plot Summary** and **Story Title**. Describe the scene before the action starts in great detail.
 3.  **Introduce the Heroes:** Introduce each character from the **Characters** list, weaving their description into the narrative. Mention their roles, abilities, and how they look. If there are any NPCs, introduce them as well.
 4.  **Present the Inciting Incident:** Conclude the text by describing the very first situation or challenge the party faces, which should align with the first scene's goal: "${plot.scenes[0].description}".
-5.  **Create Options:** Generate three clear, action-oriented options for the players to choose from as their first move.
+5.  **Create Options:** Generate three clear, action-oriented options for the players to choose from as their first move. The options should be phrased as actions the current player (${input.players[0].name}) can take. For example: "Jules, you can explore the cave".
 6.  **Return JSON:** Return EXACTLY a JSON object with the specified structure, identical to the standard scene generation.
 {
   "story": "Your introductory text (2-3 paragraphs).",
@@ -289,9 +289,9 @@ Return EXACTLY a JSON object with the following structure (no markdown, no extra
 {
   "story": "A brief, direct narrative (max 80 words) in '${input.lang}'.",
   "options": [
-    {"text": "An action-oriented option in '${input.lang}'...", "isRisky": false, "stateDelta": {"risk": 5}},
-    {"text": "A risky option that requires a dice roll...", "isRisky": true, "stateDelta": {"risk": 20, "health": -5}},
-    {"text": "A puzzle-solving or investigative option...", "isRisky": false, "stateDelta": {"mana": -5}}
+    {"text": "An action-oriented option for ${input.players[input.turn].name} in '${input.lang}'...", "isRisky": false, "stateDelta": {"risk": 5}},
+    {"text": "A risky option for ${input.players[input.turn].name} that requires a dice roll...", "isRisky": true, "stateDelta": {"risk": 20, "health": -5}},
+    {"text": "A puzzle-solving or investigative option for ${input.players[input.turn].name}...", "isRisky": false, "stateDelta": {"mana": -5}}
   ],
   "imagePrompt": "A short, vivid scene description for illustration, using details from the world state.",
   "sceneTags": ["comma-free", "single", "word", "tags"],
