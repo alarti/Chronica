@@ -143,9 +143,10 @@ async function generatePDF() {
     try {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
+
+        const story = await getStory(currentStoryId);
         const history = await getHistory(currentStoryId, Infinity);
-        const stories = await getAllStories();
-        const storyTitle = stories.find(s => s.id === currentStoryId)?.title || 'My Adventure';
+        const storyTitle = story?.title || 'My Adventure';
 
         doc.setFontSize(22);
         doc.text(storyTitle, 10, 20);
@@ -154,14 +155,53 @@ async function generatePDF() {
         let y = 40;
         const margin = 10;
         const pageHeight = doc.internal.pageSize.height;
+        const addPageIfNeeded = () => {
+            if (y > pageHeight - 20) {
+                doc.addPage();
+                y = 20;
+            }
+        };
+
+        // Render Intro Scenes if they exist
+        if (story.introData && story.introData.intro_scenes) {
+            doc.setFont(undefined, 'bold');
+            doc.text("Introduction", margin, y);
+            y += 10;
+            doc.setFont(undefined, 'normal');
+
+            for (const scene of story.introData.intro_scenes) {
+                addPageIfNeeded();
+                if (scene.imagePrompt) {
+                    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(scene.imagePrompt)}`;
+                    const imageData = await getImageAsDataURL(imageUrl);
+                    if (imageData) {
+                        const imgWidth = 150;
+                        const imgHeight = (imgWidth / 16) * 9;
+                        if (y > pageHeight - (imgHeight + 10)) addPageIfNeeded();
+                        doc.addImage(imageData, 'JPEG', margin, y, imgWidth, imgHeight);
+                        y += imgHeight + 10;
+                    }
+                }
+
+                addPageIfNeeded();
+                if (scene.type === 'character') {
+                    doc.setFont(undefined, 'bold');
+                    doc.text(scene.character_name, margin, y);
+                    y += 7;
+                    doc.setFont(undefined, 'normal');
+                }
+
+                const storyLines = doc.splitTextToSize(scene.text, 180);
+                doc.text(storyLines, margin, y);
+                y += (storyLines.length * 7) + 10;
+            }
+            y += 10; // Extra space after intro
+        }
 
         history.reverse(); // chronological order
 
         for (const [index, event] of history.entries()) {
-            if (y > pageHeight - 20) { // Page break check
-                doc.addPage();
-                y = 20;
-            }
+            addPageIfNeeded();
 
             if (event.imagePrompt) {
                 const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(event.imagePrompt)}`;
@@ -169,17 +209,14 @@ async function generatePDF() {
                 if (imageData) {
                     const imgWidth = 150;
                     const imgHeight = (imgWidth / 16) * 9;
-                    if (y > pageHeight - (imgHeight + 10)) {
-                        doc.addPage();
-                        y = 20;
-                    }
+                    if (y > pageHeight - (imgHeight + 10)) addPageIfNeeded();
                     doc.addImage(imageData, 'JPEG', margin, y, imgWidth, imgHeight);
                     y += imgHeight + 10;
                 }
             }
 
             if (event.story) {
-                if (index === 0) {
+                if (index === 0 && (!story.introData || !story.introData.intro_scenes)) {
                     doc.setFont(undefined, 'bold');
                     doc.text("Introduction", margin, y);
                     y += 7;
@@ -321,7 +358,7 @@ function updateProgress() {
 }
 
 function renderSidePanel() {
-  updateProgress(); // Update progress bar every time side panel is rendered
+  updateProgress(); // This will find and update the progress bar elements after they are rendered.
   const panel = document.getElementById('side-panel');
   if (!panel || !gameState.players) return;
 
@@ -370,6 +407,14 @@ function renderSidePanel() {
 
   panel.innerHTML = `
     <button id="close-panel-btn">X</button>
+    <div id="progress-container">
+        <span>Story Progress:</span>
+        <div id="progress-bar">
+            <div id="progress-bar-fill"></div>
+        </div>
+        <span id="progress-percentage">0%</span>
+    </div>
+    <hr>
     <h3>Party Stats</h3>
     ${playerStatsHtml}
     <hr>
@@ -382,6 +427,166 @@ function renderSidePanel() {
       <span>${gameState.risk}/100</span>
     </div>
   `;
+
+  // Call updateProgress again after the innerHTML is set to ensure the bar is drawn correctly.
+  updateProgress();
+}
+
+function attachOptionListeners(scene) {
+    const sceneText = scene.story || (scene.intro_scenes && scene.intro_scenes[scene.intro_scenes.length - 1].text) || '';
+    const imagePrompt = scene.imagePrompt || (scene.intro_scenes && scene.intro_scenes[scene.intro_scenes.length - 1].imagePrompt) || '';
+
+    setTimeout(() => {
+        const currentPlayer = gameState.players[gameState.turn];
+        const optionsList = document.querySelector("#options-container ul");
+
+        if (optionsList && currentPlayer.isAlive && gameState.players.length > 1) {
+            const passTurnLi = document.createElement('li');
+            const passTurnBtn = document.createElement('button');
+            passTurnBtn.id = 'pass-turn-btn';
+            passTurnBtn.innerHTML = 'Pass Turn (-10 Mana)';
+            if (currentPlayer.mana < 10) {
+                passTurnBtn.disabled = true;
+                passTurnBtn.title = 'Not enough mana';
+            }
+            passTurnBtn.addEventListener('click', () => {
+                if (currentPlayer.mana >= 10) {
+                    advanceToNextScene(
+                        `${currentPlayer.name} takes a moment to rest and gather their thoughts.`,
+                        { mana: -10 }
+                    );
+                }
+            });
+            passTurnLi.appendChild(passTurnBtn);
+            optionsList.appendChild(passTurnLi);
+        }
+
+        document.querySelectorAll('.option-button').forEach(button => {
+            button.addEventListener('click', (event) => {
+                const optionIndex = parseInt(event.target.dataset.index, 10);
+                const chosenOption = scene.options[optionIndex];
+
+                const selectedOptionText = chosenOption.text;
+                const isRisky = chosenOption.isRisky || false;
+                const stateDelta = chosenOption.stateDelta || {};
+
+                if (isRisky) {
+                    handleRiskyChoice(selectedOptionText, stateDelta, sceneText, imagePrompt);
+                } else {
+                    advanceToNextScene(selectedOptionText, stateDelta, sceneText, imagePrompt);
+                }
+            });
+        });
+
+        const customInput = document.getElementById('custom-option-input');
+        const customSubmit = document.getElementById('custom-option-submit');
+        if (customSubmit && customInput) {
+            customSubmit.addEventListener('click', () => {
+                const customChoice = customInput.value;
+                if (customChoice.trim() !== '') {
+                    advanceToNextScene(customChoice, {}, sceneText, imagePrompt);
+                }
+            });
+        }
+    }, 0);
+}
+
+async function renderIntroTrailer(intro) {
+    const appDiv = document.getElementById('app');
+    if (!appDiv) {
+        console.error("Could not find #app element in the DOM.");
+        return;
+    }
+
+    let currentIndex = 0;
+    const imageUrlBase = 'https://image.pollinations.ai/prompt';
+
+    function renderCurrentIntroScene() {
+        const trailerScene = intro.intro_scenes[currentIndex];
+        const fullUrl = `${imageUrlBase}/${encodeURIComponent(trailerScene.imagePrompt)}`;
+        const backgroundStyle = `style="background-image: url('${fullUrl}');"`;
+
+        let textHtml = `<p id="story-text"></p>`;
+        if (trailerScene.type === 'character') {
+            textHtml = `<h2>${trailerScene.character_name}</h2>` + textHtml;
+        }
+
+        const navButtons = `
+            <div class="intro-nav-buttons">
+                <button id="intro-back-btn" ${currentIndex === 0 ? 'disabled' : ''}>Back</button>
+                <button id="intro-next-btn">Next</button>
+            </div>
+        `;
+
+        appDiv.innerHTML = `
+            <div class="scene-background" ${backgroundStyle}></div>
+            <div class="scene-overlay"></div>
+            <div id="subtitle-container">
+                ${textHtml}
+            </div>
+            ${navButtons}
+        `;
+
+        const storyElement = document.getElementById('story-text');
+        typewriter(storyElement, trailerScene.text, 50);
+
+        document.getElementById('intro-next-btn').onclick = () => {
+            if (currentIndex < intro.intro_scenes.length - 1) {
+                currentIndex++;
+                renderCurrentIntroScene();
+            } else {
+                // Last scene, transition to game
+                showPlayerUpScreen();
+            }
+        };
+
+        document.getElementById('intro-back-btn').onclick = () => {
+            if (currentIndex > 0) {
+                currentIndex--;
+                renderCurrentIntroScene();
+            }
+        };
+    }
+
+    async function showPlayerUpScreen() {
+        const currentPlayer = gameState.players[gameState.turn];
+        appDiv.innerHTML = `
+            <div class="scene-background" style="background-color: #000;"></div>
+            <div class="scene-overlay"></div>
+            <div id="subtitle-container" style="text-align: center;">
+                <h1 class="player-turn-title">Next up: ${currentPlayer.name}</h1>
+            </div>
+        `;
+        await new Promise(resolve => setTimeout(resolve, 4000));
+        renderFirstOptions();
+    }
+
+    function renderFirstOptions() {
+        const lastScene = intro.intro_scenes[intro.intro_scenes.length - 1];
+        const fullUrl = `${imageUrlBase}/${encodeURIComponent(lastScene.imagePrompt)}`;
+        const backgroundStyle = `style="background-image: url('${fullUrl}')"`;
+        const optionsHtml = intro.options.map((option, index) => {
+            return `<li><button class="option-button" data-index="${index}" data-is-risky="${option.isRisky || false}">${option.text}</button></li>`;
+        }).join('');
+
+        appDiv.innerHTML = `
+            <div class="scene-background" ${backgroundStyle}></div>
+            <div class="scene-overlay"></div>
+            <div id="subtitle-container">
+                <div id="options-container" class="visible">
+                    <ul>${optionsHtml}</ul>
+                    <div id="custom-option-container">
+                        <input type="text" id="custom-option-input" placeholder="Or type your own action...">
+                        <button id="custom-option-submit">Submit</button>
+                    </div>
+                </div>
+                <p id="story-text">${lastScene.text}</p>
+            </div>
+        `;
+        attachOptionListeners(intro);
+    }
+
+    renderCurrentIntroScene();
 }
 
 function renderRiddle(riddle) {
@@ -457,75 +662,12 @@ function renderScene(scene) {
   const optionsContainer = document.getElementById('options-container');
 
   if (storyElement && optionsContainer) {
-    let storyText = scene.story;
-    if (gameState.sceneIndex === 0) {
-        const characterSheets = gameState.players.map(p => {
-            return `\n**${p.name}**\n*${p.race} ${p.class}*\n> ${p.description}`;
-        }).join('\n');
-        storyText = `**Character Sheets**\n${characterSheets}\n\n${storyText}`;
-    }
-    typewriter(storyElement, storyText, 50, () => {
+    typewriter(storyElement, scene.story, 50, () => {
       optionsContainer.classList.add('visible');
     });
   }
 
-  // Add event listeners after a short delay to ensure elements are in the DOM
-  setTimeout(() => {
-    const currentPlayer = gameState.players[gameState.turn];
-    const optionsList = document.querySelector("#options-container ul");
-
-    if (optionsList && currentPlayer.isAlive && gameState.players.length > 1) {
-        const passTurnLi = document.createElement('li');
-        const passTurnBtn = document.createElement('button');
-        passTurnBtn.id = 'pass-turn-btn';
-        passTurnBtn.innerHTML = 'Pass Turn (-10 Mana)';
-        if (currentPlayer.mana < 10) {
-            passTurnBtn.disabled = true;
-            passTurnBtn.title = 'Not enough mana';
-        }
-        passTurnBtn.addEventListener('click', () => {
-            if (currentPlayer.mana >= 10) {
-                advanceToNextScene(
-                    `${currentPlayer.name} takes a moment to rest and gather their thoughts.`,
-                    { mana: -10 }
-                );
-            }
-        });
-        passTurnLi.appendChild(passTurnBtn);
-        optionsList.appendChild(passTurnLi);
-    }
-
-    // Event listeners for the generated option buttons
-    document.querySelectorAll('.option-button').forEach(button => {
-      button.addEventListener('click', (event) => {
-        const optionIndex = parseInt(event.target.dataset.index, 10);
-        const chosenOption = scene.options[optionIndex];
-
-        const selectedOptionText = chosenOption.text;
-        const isRisky = chosenOption.isRisky || false;
-        const stateDelta = chosenOption.stateDelta || {};
-
-        if (isRisky) {
-          handleRiskyChoice(selectedOptionText, stateDelta, scene.story, scene.imagePrompt);
-        } else {
-          advanceToNextScene(selectedOptionText, stateDelta, scene.story, scene.imagePrompt);
-        }
-      });
-    });
-
-    // Event listener for the custom text input
-    const customInput = document.getElementById('custom-option-input');
-    const customSubmit = document.getElementById('custom-option-submit');
-    if (customSubmit && customInput) {
-      customSubmit.addEventListener('click', () => {
-        const customChoice = customInput.value;
-        if (customChoice.trim() !== '') {
-          // Custom inputs have no pre-defined state delta.
-          advanceToNextScene(customChoice, {}, scene.story, scene.imagePrompt);
-        }
-      });
-    }
-  }, 0);
+  attachOptionListeners(scene);
 }
 
 function advanceTurn() {
@@ -629,11 +771,23 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
     }
 
     const sceneOrRiddle = await generateScene(gameState, { isRiddleTurn });
-    gameState.sceneIndex++; // Move to the next scene in the plot
 
-    if (sceneOrRiddle.acertijo) {
+    // The intro is a special, one-time event.
+    // It doesn't increment the sceneIndex in the same way.
+    if (sceneOrRiddle.intro_scenes) {
+        // This is a special, one-time event that contains the intro trailer data.
+        // We need to save this data so we can use it for the PDF export later.
+        await updateStory(currentStoryId, { introData: sceneOrRiddle });
+
+        renderIntroTrailer(sceneOrRiddle);
+
+        // We don't increment sceneIndex here because the intro isn't part of the main plot progression.
+        // The first real choice will advance the sceneIndex.
+    } else if (sceneOrRiddle.acertijo) {
+        gameState.sceneIndex++;
         renderRiddle(sceneOrRiddle);
     } else {
+        gameState.sceneIndex++;
         renderScene(sceneOrRiddle);
     }
   } catch (error) {

@@ -214,8 +214,8 @@ const getFirstScenePrompt = (input) => {
     const characterDescriptions = JSON.stringify(input.players.map(p => ({ name: p.name, race: p.race, class: p.class, description: p.description })));
 
     return `
-You are the master storyteller for the text-based RPG “Chronica: Infinite Stories”.
-Your task is to write a compelling introductory scene for the story.
+You are the master storyteller and trailer director for the text-based RPG “Chronica: Infinite Stories”.
+Your task is to create a compelling introductory "movie trailer" for the story. This trailer will be presented as a sequence of scenes, each with its own text and image.
 
 **Language:** ${input.lang}
 **Story Title:** "${plot.title}"
@@ -223,23 +223,33 @@ Your task is to write a compelling introductory scene for the story.
 **Characters:** ${characterDescriptions}
 
 **Directives:**
-1.  **Perspective:** The story should be told from the perspective of the players, making them the protagonists. The first player is ${input.players[0].name}.
-2.  **Set the Scene:** Write a long and detailed opening (at least 3 paragraphs) in ${input.lang} that establishes the setting and mood, based on the **Overall Plot Summary** and **Story Title**. Describe the scene before the action starts in great detail.
-3.  **Introduce the Heroes:** Introduce each character from the **Characters** list, weaving their description into the narrative. Mention their roles, abilities, and how they look. If there are any NPCs, introduce them as well.
-4.  **Present the Inciting Incident:** Conclude the text by describing the very first situation or challenge the party faces, which should align with the first scene's goal: "${plot.scenes[0].description}".
-5.  **Create Options:** Generate three clear, action-oriented options for the players to choose from as their first move. The options should be phrased as actions the current player (${input.players[0].name}) can take. For example: "Jules, you can explore the cave".
-6.  **Return JSON:** Return EXACTLY a JSON object with the specified structure, identical to the standard scene generation.
+1.  **Trailer Structure:** Create a sequence of introductory scenes. This sequence should be an array in a field called "intro_scenes".
+2.  **Scene Setting:** The first 2-3 scenes in the array should set the mood and describe the world based on the **Overall Plot Summary** and **Story Title**. Each of these scenes must be an object with "type": "intro", a short paragraph of "text", and a corresponding "imagePrompt".
+3.  **Character Introduction:** After setting the scene, create one dedicated scene for EACH character in the **Characters** list. This scene should be an object with "type": "character", the character's name in a "character_name" field, and text that introduces them by name, weaving in their description, race, and class. Each character introduction scene must have its own unique, descriptive "imagePrompt" that visually represents the character.
+4.  **Inciting Incident:** The final scene in the sequence should describe the very first situation or challenge the party faces. This should align with the first scene's goal: "${plot.scenes[0].description}". This scene also needs "text" and an "imagePrompt", and its type should be "incident".
+5.  **Player Options:** After the trailer sequence, provide three clear, action-oriented options for the first player, ${input.players[0].name}, to choose from. These should be in an "options" array at the top level of the JSON.
+6.  **Return JSON:** Return EXACTLY a JSON object with the following structure. Do not use markdown or add extra keys.
+
 {
-  "story": "Your introductory text (2-3 paragraphs).",
-  "options": [
-    {"text": "First action option...", "isRisky": false, "stateDelta": {}},
-    {"text": "Second action option...", "isRisky": false, "stateDelta": {}},
-    {"text": "Third action option...", "isRisky": false, "stateDelta": {}}
+  "intro_scenes": [
+    {
+      "type": "intro",
+      "text": "A paragraph setting the scene...",
+      "imagePrompt": "A vivid image prompt for this part of the scene."
+    },
+    {
+      "type": "character",
+      "character_name": "PlayerName1",
+      "text": "A paragraph introducing this character...",
+      "imagePrompt": "A vivid image prompt for this character, matching their description."
+    }
   ],
-  "imagePrompt": "A vivid scene description for the introduction.",
-  "sceneTags": ["introduction", "prologue"],
-  "stateDelta": { "worldState": {} },
-  "ui": { "title": "Chapter 0: Introduction", "toast": "Your story unfolds..." },
+  "options": [
+    {"text": "First action option for ${input.players[0].name}...", "isRisky": false, "stateDelta": {}},
+    {"text": "Second action option for ${input.players[0].name}...", "isRisky": false, "stateDelta": {}},
+    {"text": "Third action option for ${input.players[0].name}...", "isRisky": false, "stateDelta": {}}
+  ],
+  "ui": { "title": "Chapter 0: Introduction" },
   "credits": "Created by Alberto Arce."
 }
 `;
