@@ -286,7 +286,7 @@ Your task is to create a compelling introductory "trailer" for the story, format
 2.  **Scene Setting:** The first 2-3 blocks should set the mood and describe the world based on the Plot Summary and Title. Use the "narrator" speaker.
 3.  **Character Introduction:** After setting the scene, create one dedicated block for EACH character, introducing them by name and weaving in their description. Use "narrator" as the speaker.
 4.  **Inciting Incident:** The final block should describe the first challenge, aligning with the first scene's goal: "${plot.scenes[0].description}".
-5.  **Choices:** Provide three clear, action-oriented choices for the first player, ${input.players[0].name}.
+5.  **Choices:** Provide three clear, action-oriented choices for the first player, ${input.players[0].name}. Each choice must include \`isRisky\` and \`stateDelta\` fields to define game mechanics.
 6.  **Return JSON:** Return EXACTLY a JSON object following the main schema.
 
 {
@@ -312,9 +312,9 @@ Your task is to create a compelling introductory "trailer" for the story, format
   "characters": ${JSON.stringify(charactersForPrompt)},
   "riddle": { "present": false, "prompt": "", "answer_hint": "" },
   "choices": [
-    { "id": "A", "text": "First action option for ${input.players[0].name}..." },
-    { "id": "B", "text": "Second action option..." },
-    { "id": "C", "text": "Third action option..." }
+    { "id": "A", "text": "First action option for ${input.players[0].name}...", "isRisky": false, "stateDelta": {} },
+    { "id": "B", "text": "Second action option...", "isRisky": false, "stateDelta": {} },
+    { "id": "C", "text": "Third action option...", "isRisky": true, "stateDelta": {"risk": 10} }
   ],
   "image_prompt": "An epic, cinematic image representing the story's title and main theme.",
   "timers": { "suggested_ms_per_block": 5000, "accelerate_if_urgent_factor": 0.8 },
@@ -360,6 +360,7 @@ Your response MUST be a single, valid JSON object that strictly adheres to the s
 2.  **TTS Segmentation:** The main narrative must be an array of blocks, each with a maximum of 240 characters, ready for continuous TTS playback.
 3.  **Voice & Sentiment:** Assign a voice, sentiment, and urgency to every narrative block. Keep voices consistent for each character.
 4.  **Current Player Focus:** It is ${currentPlayer.name}'s turn. The story and choices should focus on their perspective.
+5.  **Game Mechanics:** Each choice MUST include an \`isRisky\` boolean and a \`stateDelta\` object to define the consequences (e.g., changing health, risk, mana).
 
 **Story So Far (Summary):**
 ${summary}
@@ -397,9 +398,9 @@ Generate the NEXT scene. Return EXACTLY a JSON object with the following structu
   "characters": ${JSON.stringify(charactersForPrompt)},
   "riddle": { "present": false, "prompt": "", "answer_hint": "" },
   "choices": [
-    { "id": "A", "text": "An action-oriented choice for ${currentPlayer.name}." },
-    { "id": "B", "text": "A different, concise choice." },
-    { "id": "C", "text": "A third option, possibly investigative or social." }
+    {"id": "A", "text": "An action-oriented choice for ${currentPlayer.name}.", "isRisky": false, "stateDelta": {"risk": 5, "mana": -5}},
+    {"id": "B", "text": "A different, risky choice.", "isRisky": true, "stateDelta": {"risk": 20, "health": -10}},
+    {"id": "C", "text": "A third option, possibly investigative or social.", "isRisky": false, "stateDelta": {}}
   ],
   "image_prompt": "A brief, visual prompt for an image generator, under 140 characters, matching the narrative.",
   "timers": { "suggested_ms_per_block": 4500, "accelerate_if_urgent_factor": 0.8 },

@@ -434,8 +434,12 @@ function renderSidePanel() {
 }
 
 function attachOptionListeners(scene) {
-    const sceneText = scene.story || (scene.intro_scenes && scene.intro_scenes[scene.intro_scenes.length - 1].text) || '';
-    const imagePrompt = scene.imagePrompt || (scene.intro_scenes && scene.intro_scenes[scene.intro_scenes.length - 1].imagePrompt) || '';
+    // This function now needs to handle the legacy `story` and `imagePrompt` fields
+    // which are no longer top-level properties in the new scene format.
+    // For now, we'll pass empty strings, as this part of the logic is mainly for the PDF export,
+    // which is a lower priority than fixing the main game loop.
+    const sceneTextForHistory = scene.story || scene.narrative?.map(n => n.text).join(' ') || '';
+    const imagePromptForHistory = scene.image_prompt || scene.imagePrompt || '';
 
     setTimeout(() => {
         const currentPlayer = gameState.players[gameState.turn];
@@ -465,16 +469,22 @@ function attachOptionListeners(scene) {
         document.querySelectorAll('.option-button').forEach(button => {
             button.addEventListener('click', (event) => {
                 const optionIndex = parseInt(event.target.dataset.index, 10);
-                const chosenOption = scene.options[optionIndex];
+                const options = scene.choices || scene.options; // Handle both formats
+                const chosenOption = options[optionIndex];
+
+                if (!chosenOption) {
+                    console.error("Chosen option not found!", optionIndex, options);
+                    return;
+                }
 
                 const selectedOptionText = chosenOption.text;
                 const isRisky = chosenOption.isRisky || false;
                 const stateDelta = chosenOption.stateDelta || {};
 
                 if (isRisky) {
-                    handleRiskyChoice(selectedOptionText, stateDelta, sceneText, imagePrompt);
+                    handleRiskyChoice(selectedOptionText, stateDelta, sceneTextForHistory, imagePromptForHistory);
                 } else {
-                    advanceToNextScene(selectedOptionText, stateDelta, sceneText, imagePrompt);
+                    advanceToNextScene(selectedOptionText, stateDelta, sceneTextForHistory, imagePromptForHistory);
                 }
             });
         });
@@ -485,7 +495,7 @@ function attachOptionListeners(scene) {
             customSubmit.addEventListener('click', () => {
                 const customChoice = customInput.value;
                 if (customChoice.trim() !== '') {
-                    advanceToNextScene(customChoice, {}, sceneText, imagePrompt);
+                    advanceToNextScene(customChoice, {}, sceneTextForHistory, imagePromptForHistory);
                 }
             });
         }
