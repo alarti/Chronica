@@ -272,12 +272,13 @@ The content must be family-friendly.
 ${summary}
 
 **Party State:**
-- Players: ${JSON.stringify(input.players.map(p => ({name: p.name, race: p.race, class: p.class, isAlive: p.isAlive})))}
+- Players: ${JSON.stringify(input.players.map(p => ({name: p.name, race: p.race, class: p.class, isAlive: p.isAlive})))}. You MUST use the characters' races and classes to inform the narrative.
 - Current Turn: It is ${input.players[input.turn].name}'s turn to act.
 - Last Choice: ${input.lastChoice || 'None'}
-- Story Theme: The story is titled "${input.storyTitle}". The entire narrative must strictly adhere to this theme.
+- Story Theme: The story is titled "${input.storyTitle}". The entire narrative must strictly adhere to this theme and the overall plot.
 - Known World State: Use these details for consistency. ${JSON.stringify(input.worldState)}
 - **Current Scene Goal:** The current objective for the heroes is: "${currentSceneGoal}". Your generated scene must be a step towards accomplishing this goal. As the story progresses (higher scene index out of total scenes), the narrative should build towards a climax and conclusion based on the overall plot.
+- **Custom Action Integration:** If the "Last Choice" was a custom action written by the player, you MUST make that action the central focus of the generated "story" text. The narrative should describe the outcome of that specific action. The "imagePrompt" should also visually represent this custom action.
 
 **Your Task:**
 Generate the NEXT scene that logically follows the "Last Choice" and moves the story towards the "Current Scene Goal". Update the world state with any new characters, locations, or key items.

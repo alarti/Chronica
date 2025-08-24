@@ -363,6 +363,7 @@ function renderSidePanel() {
   const inventoryItems = Object.entries(gameState.inventory || {}).map(([item, quantity]) => `<li>${item}: ${quantity}</li>`).join('');
 
   panel.innerHTML = `
+    <button id="close-panel-btn">X</button>
     <h3>Party Stats</h3>
     ${playerStatsHtml}
     <hr>
@@ -383,6 +384,7 @@ function renderRiddle(riddle) {
     appDiv.innerHTML = `
     <div class="scene-overlay"></div>
     <div id="subtitle-container">
+        <h2 class="riddle-title">Riddle</h2>
         <p id="story-text"></p>
         <div id="options-container" class="visible">
             <ul></ul>
@@ -459,7 +461,7 @@ function renderScene(scene) {
     const currentPlayer = gameState.players[gameState.turn];
     const optionsList = document.querySelector("#options-container ul");
 
-    if (optionsList && currentPlayer.isAlive) {
+    if (optionsList && currentPlayer.isAlive && gameState.players.length > 1) {
         const passTurnLi = document.createElement('li');
         const passTurnBtn = document.createElement('button');
         passTurnBtn.id = 'pass-turn-btn';
@@ -643,6 +645,13 @@ async function startGame(storyId, initialGameState, timeLimit = 0) {
       sidePanel.classList.toggle('hidden');
       menuButton.classList.toggle('panel-open');
     };
+
+    panel.addEventListener('click', (e) => {
+        if (e.target.id === 'close-panel-btn') {
+            sidePanel.classList.add('hidden');
+            menuButton.classList.remove('panel-open');
+        }
+    });
   }
 
   renderSidePanel();
@@ -651,12 +660,15 @@ async function startGame(storyId, initialGameState, timeLimit = 0) {
   if (gameState.sceneIndex === 0) {
       advanceToNextScene("The story begins.", {}, "Welcome to your story!");
   } else {
-      // If loading, just render the current state and wait for player.
-      // We can refetch the last scene from history if needed, or just show a generic message.
-      document.getElementById('app').innerHTML = `<p>Continue your adventure, ${gameState.players[gameState.turn].name}!</p>`;
-      // This part could be improved to re-render the last scene properly.
-      // For now, we'll just show the side panel and let the player take their turn.
-      // A full implementation would require re-rendering the last scene based on history.
+      // If loading, re-generate the last scene to continue the story
+      const history = await getHistory(currentStoryId, 1);
+      if (history.length > 0) {
+          const lastEvent = history[0];
+          advanceToNextScene(lastEvent.choice, lastEvent.stateDelta, lastEvent.story, lastEvent.imagePrompt);
+      } else {
+        // Fallback if history is empty for some reason
+        advanceToNextScene("The story continues...", {}, "");
+      }
   }
 }
 

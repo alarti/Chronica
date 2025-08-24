@@ -395,6 +395,10 @@ body {
   overflow-y: auto;
 }
 
+#close-panel-btn {
+    display: none;
+}
+
 #side-panel.hidden {
   right: -300px; /* Hidden off-screen to the right */
 }
@@ -783,6 +787,14 @@ body {
     height: 100%;
 }
 
+.riddle-title {
+    font-family: var(--font-primary);
+    font-size: 2rem;
+    color: var(--color-text-light);
+    text-shadow: 0 0 10px #fff;
+    margin-bottom: 1rem;
+}
+
 /* --- Responsive Design --- */
 @media (max-width: 768px) {
     #start-screen h1 {
@@ -882,6 +894,21 @@ body {
         transform: translateX(0);
     }
 
+
+    #close-panel-btn {
+        display: block;
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        background: none;
+        border: 1px solid #fff;
+        color: #fff;
+        font-size: 1.5rem;
+        cursor: pointer;
+        width: 35px;
+        height: 35px;
+        border-radius: 5px;
+    }
 
     #menu-button.panel-open {
         transform: translateX(-80vw);
