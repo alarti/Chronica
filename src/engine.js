@@ -31,6 +31,35 @@ const fallbackScene = {
   credits: "Created by Alberto Arce."
 };
 
+async function getSummary(history) {
+  if (!history || history.length === 0) {
+    return 'This is the first turn.';
+  }
+
+  const fullStory = history.map(event => {
+    const choiceText = (typeof event.choice === 'object') ? event.choice.action : event.choice;
+    return `> ${choiceText}\\n${event.story}`;
+  }).join('\\n\\n');
+
+  const prompt = `Summarize the following story so far in a few concise paragraphs. This summary will be used as context for a text-based RPG. Do not break character, just provide the summary. STORY: \\n${fullStory}`;
+  const payload = { model: 'openai', messages: [{ role: 'user', content: prompt }] };
+  const apiUrl = 'https://text.pollinations.ai/openai';
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok) return "The story continues..."; // Fallback summary
+    const result = await response.json();
+    return result.choices[0].message.content;
+  } catch (error) {
+    console.error("Failed to get summary:", error);
+    return "The story continues..."; // Fallback summary
+  }
+}
+
 const getEndingPrompt = (finalState, lang) => {
   return `
 You are the epilogue writer for a text-based RPG called “Chronica: Infinite Stories”.
@@ -191,12 +220,11 @@ Your task is to write a compelling introductory scene for the story.
 **Characters:** ${characterDescriptions}
 
 **Directives:**
-1.  **Protagonists:** The players are the protagonists of the story.
-2.  **Set the Scene:** Write a detailed opening paragraph in ${input.lang} that establishes the setting and mood, based on the **Overall Plot Summary** and **Story Title**. Describe the scene before the action starts.
-3.  **Introduce the Heroes:** Introduce each character from the **Characters** list, weaving their description into the narrative. Mention their roles and abilities. If there are any NPCs, introduce them as well.
-4.  **Present the Inciting Incident:** Conclude the text by describing the very first situation or challenge the party faces, which should align with the first scene's goal: "${plot.scenes[0].description}".
-5.  **Create Options:** Generate three clear, action-oriented options for the players to choose from as their first move.
-6.  **Return JSON:** Return EXACTLY a JSON object with the specified structure, identical to the standard scene generation.
+1.  **Set the Scene:** Write a compelling opening paragraph in ${input.lang} that establishes the setting and mood, based on the **Overall Plot Summary** and **Story Title**.
+2.  **Introduce the Heroes:** Introduce each character from the **Characters** list, weaving their description into the narrative.
+3.  **Present the Inciting Incident:** Conclude the text by describing the very first situation or challenge the party faces, which should align with the first scene's goal: "${plot.scenes[0].description}".
+4.  **Create Options:** Generate three clear, action-oriented options for the players to choose from as their first move.
+5.  **Return JSON:** Return EXACTLY a JSON object with the specified structure, identical to the standard scene generation.
 {
   "story": "Your introductory text (2-3 paragraphs).",
   "options": [
@@ -214,7 +242,7 @@ Your task is to write a compelling introductory scene for the story.
 };
 
 // This is the prompt contract that instructs the AI.
-const getPrompt = (input, options = {}) => {
+const getPrompt = (input, summary, options = {}) => {
   if (options.isRiddleTurn) {
     return getRiddlePrompt(input);
   }
@@ -225,10 +253,6 @@ const getPrompt = (input, options = {}) => {
   }
 
     const currentSceneGoal = input.plot?.scenes[input.sceneIndex]?.description || "The story continues, with the heroes charting their own path.";
-    const history = input.history.map(event => {
-        const choiceText = (typeof event.choice === 'object') ? event.choice.action : event.choice;
-        return `> ${choiceText}\\n${event.story}`;
-    }).join('\\n\\n');
 
   return `
 You are the narrative engine for a game called “Chronica: Infinite Stories” by Alberto Arce.
@@ -244,19 +268,16 @@ The content must be family-friendly.
     -   **Characters:** Any characters introduced must remain consistent in their appearance, personality, and name.
     -   **Visuals:** Image prompts must maintain a style that is consistent with the story's theme and title.
 
-**Story Context:**
-- **Initial Plot:** ${JSON.stringify(input.plot)}
-- **Full Event History:**
-${history}
+**Story So Far (Summary):**
+${summary}
 
 **Party State:**
-- Players: ${JSON.stringify(input.players.map(p => ({name: p.name, race: p.race, class: p.class, isAlive: p.isAlive})))}. You MUST use the characters' races and classes to inform the narrative.
+- Players: ${JSON.stringify(input.players.map(p => ({name: p.name, race: p.race, class: p.class, isAlive: p.isAlive})))}
 - Current Turn: It is ${input.players[input.turn].name}'s turn to act.
 - Last Choice: ${input.lastChoice || 'None'}
-- Story Theme: The story is titled "${input.storyTitle}". The entire narrative must strictly adhere to this theme and the overall plot.
+- Story Theme: The story is titled "${input.storyTitle}". The entire narrative must strictly adhere to this theme.
 - Known World State: Use these details for consistency. ${JSON.stringify(input.worldState)}
 - **Current Scene Goal:** The current objective for the heroes is: "${currentSceneGoal}". Your generated scene must be a step towards accomplishing this goal. As the story progresses (higher scene index out of total scenes), the narrative should build towards a climax and conclusion based on the overall plot.
-- **Custom Action Integration:** If the "Last Choice" was a custom action written by the player, you MUST make that action the central focus of the generated "story" text. The narrative should describe the outcome of that specific action. The "imagePrompt" should also visually represent this custom action.
 
 **Your Task:**
 Generate the NEXT scene that logically follows the "Last Choice" and moves the story towards the "Current Scene Goal". Update the world state with any new characters, locations, or key items.
@@ -288,9 +309,10 @@ Return EXACTLY a JSON object with the following structure (no markdown, no extra
  */
 export async function generateScene(input, options = {}) {
   const history = input.history || [];
+  const summary = await getSummary(history);
 
   const apiUrl = 'https://text.pollinations.ai/openai';
-  const prompt = getPrompt(input, options);
+  const prompt = getPrompt(input, summary, options);
   const payload = { model: 'openai', messages: [{ role: 'user', content: prompt }] };
 
   try {

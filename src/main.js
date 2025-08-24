@@ -610,6 +610,7 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
   }
 
   try {
+    console.log("Trying to generate next scene...");
     // Check for special riddle turn
     const isRiddleTurn = gameState.round > 0 && (gameState.round % 3 === 0) && gameState.turn === 0;
     if (isRiddleTurn) {
@@ -625,8 +626,25 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
     }
   } catch (error) {
     console.error("Failed to generate next scene:", error);
-    renderError("Could not continue your adventure.");
+    console.log("Rendering retry button...");
+    renderRetryButton(choice, stateDelta, storyText, imagePrompt);
   }
+}
+
+function renderRetryButton(choice, stateDelta, storyText, imagePrompt) {
+    const appDiv = document.getElementById('app');
+    if (!appDiv) return;
+    appDiv.innerHTML = `
+        <p>An error occurred. Please try again.</p>
+        <button id="retry-btn">Retry</button>
+    `;
+    document.getElementById('retry-btn').onclick = () => {
+        if (choice) {
+            advanceToNextScene(choice, stateDelta, storyText, imagePrompt);
+        } else {
+            showScreen('start-screen');
+        }
+    };
 }
 
 async function startGame(storyId, initialGameState, timeLimit = 0) {
@@ -759,7 +777,7 @@ async function handleNewStory(lang) {
 
         } catch (error) {
             console.error("Failed to start new story:", error);
-            renderError("Failed to generate the story. Please try again.");
+            renderRetryButton();
         } finally {
             submitBtn.textContent = 'Begin';
             submitBtn.disabled = false;
