@@ -384,6 +384,136 @@ function renderSidePanel() {
   `;
 }
 
+function attachOptionListeners(scene) {
+    const sceneText = scene.story || (scene.intro_scenes && scene.intro_scenes[scene.intro_scenes.length - 1].text) || '';
+    const imagePrompt = scene.imagePrompt || (scene.intro_scenes && scene.intro_scenes[scene.intro_scenes.length - 1].imagePrompt) || '';
+
+    setTimeout(() => {
+        const currentPlayer = gameState.players[gameState.turn];
+        const optionsList = document.querySelector("#options-container ul");
+
+        if (optionsList && currentPlayer.isAlive && gameState.players.length > 1) {
+            const passTurnLi = document.createElement('li');
+            const passTurnBtn = document.createElement('button');
+            passTurnBtn.id = 'pass-turn-btn';
+            passTurnBtn.innerHTML = 'Pass Turn (-10 Mana)';
+            if (currentPlayer.mana < 10) {
+                passTurnBtn.disabled = true;
+                passTurnBtn.title = 'Not enough mana';
+            }
+            passTurnBtn.addEventListener('click', () => {
+                if (currentPlayer.mana >= 10) {
+                    advanceToNextScene(
+                        `${currentPlayer.name} takes a moment to rest and gather their thoughts.`,
+                        { mana: -10 }
+                    );
+                }
+            });
+            passTurnLi.appendChild(passTurnBtn);
+            optionsList.appendChild(passTurnLi);
+        }
+
+        document.querySelectorAll('.option-button').forEach(button => {
+            button.addEventListener('click', (event) => {
+                const optionIndex = parseInt(event.target.dataset.index, 10);
+                const chosenOption = scene.options[optionIndex];
+
+                const selectedOptionText = chosenOption.text;
+                const isRisky = chosenOption.isRisky || false;
+                const stateDelta = chosenOption.stateDelta || {};
+
+                if (isRisky) {
+                    handleRiskyChoice(selectedOptionText, stateDelta, sceneText, imagePrompt);
+                } else {
+                    advanceToNextScene(selectedOptionText, stateDelta, sceneText, imagePrompt);
+                }
+            });
+        });
+
+        const customInput = document.getElementById('custom-option-input');
+        const customSubmit = document.getElementById('custom-option-submit');
+        if (customSubmit && customInput) {
+            customSubmit.addEventListener('click', () => {
+                const customChoice = customInput.value;
+                if (customChoice.trim() !== '') {
+                    advanceToNextScene(customChoice, {}, sceneText, imagePrompt);
+                }
+            });
+        }
+    }, 0);
+}
+
+async function renderIntroTrailer(intro) {
+    const appDiv = document.getElementById('app');
+    if (!appDiv) {
+        console.error("Could not find #app element in the DOM.");
+        return;
+    }
+
+    const imageUrlBase = 'https://image.pollinations.ai/prompt';
+
+    for (let i = 0; i < intro.intro_scenes.length; i++) {
+        const trailerScene = intro.intro_scenes[i];
+        const fullUrl = `${imageUrlBase}/${encodeURIComponent(trailerScene.imagePrompt)}`;
+        const backgroundStyle = `style="background-image: url('${fullUrl}');"`;
+
+        let textHtml = `<p id="story-text"></p>`;
+        if (trailerScene.type === 'character') {
+            textHtml = `<h2>${trailerScene.character_name}</h2>` + textHtml;
+        }
+
+        appDiv.innerHTML = `
+            <div class="scene-background" ${backgroundStyle}></div>
+            <div class="scene-overlay"></div>
+            <div id="subtitle-container">
+                ${textHtml}
+            </div>
+        `;
+
+        const storyElement = document.getElementById('story-text');
+
+        await new Promise(resolve => {
+            typewriter(storyElement, trailerScene.text, 50, () => {
+                setTimeout(resolve, 3000);
+            });
+        });
+    }
+
+    const currentPlayer = gameState.players[gameState.turn];
+    appDiv.innerHTML = `
+        <div class="scene-background" style="background-color: #000;"></div>
+        <div class="scene-overlay"></div>
+        <div id="subtitle-container" style="text-align: center;">
+            <h1 class="player-turn-title">Next up: ${currentPlayer.name}</h1>
+        </div>
+    `;
+    await new Promise(resolve => setTimeout(resolve, 4000));
+
+    const lastScene = intro.intro_scenes[intro.intro_scenes.length - 1];
+    const fullUrl = `${imageUrlBase}/${encodeURIComponent(lastScene.imagePrompt)}`;
+    const backgroundStyle = `style="background-image: url('${fullUrl}')"`;
+    const optionsHtml = intro.options.map((option, index) => {
+        return `<li><button class="option-button" data-index="${index}" data-is-risky="${option.isRisky || false}">${option.text}</button></li>`;
+    }).join('');
+
+    appDiv.innerHTML = `
+        <div class="scene-background" ${backgroundStyle}></div>
+        <div class="scene-overlay"></div>
+        <div id="subtitle-container">
+            <div id="options-container" class="visible">
+                <ul>${optionsHtml}</ul>
+                <div id="custom-option-container">
+                    <input type="text" id="custom-option-input" placeholder="Or type your own action...">
+                    <button id="custom-option-submit">Submit</button>
+                </div>
+            </div>
+            <p id="story-text">${lastScene.text}</p>
+        </div>
+    `;
+
+    attachOptionListeners(intro);
+}
+
 function renderRiddle(riddle) {
     gameState.usedRiddles.push(riddle.acertijo);
     const appDiv = document.getElementById('app');
@@ -457,75 +587,12 @@ function renderScene(scene) {
   const optionsContainer = document.getElementById('options-container');
 
   if (storyElement && optionsContainer) {
-    let storyText = scene.story;
-    if (gameState.sceneIndex === 0) {
-        const characterSheets = gameState.players.map(p => {
-            return `\n**${p.name}**\n*${p.race} ${p.class}*\n> ${p.description}`;
-        }).join('\n');
-        storyText = `**Character Sheets**\n${characterSheets}\n\n${storyText}`;
-    }
-    typewriter(storyElement, storyText, 50, () => {
+    typewriter(storyElement, scene.story, 50, () => {
       optionsContainer.classList.add('visible');
     });
   }
 
-  // Add event listeners after a short delay to ensure elements are in the DOM
-  setTimeout(() => {
-    const currentPlayer = gameState.players[gameState.turn];
-    const optionsList = document.querySelector("#options-container ul");
-
-    if (optionsList && currentPlayer.isAlive && gameState.players.length > 1) {
-        const passTurnLi = document.createElement('li');
-        const passTurnBtn = document.createElement('button');
-        passTurnBtn.id = 'pass-turn-btn';
-        passTurnBtn.innerHTML = 'Pass Turn (-10 Mana)';
-        if (currentPlayer.mana < 10) {
-            passTurnBtn.disabled = true;
-            passTurnBtn.title = 'Not enough mana';
-        }
-        passTurnBtn.addEventListener('click', () => {
-            if (currentPlayer.mana >= 10) {
-                advanceToNextScene(
-                    `${currentPlayer.name} takes a moment to rest and gather their thoughts.`,
-                    { mana: -10 }
-                );
-            }
-        });
-        passTurnLi.appendChild(passTurnBtn);
-        optionsList.appendChild(passTurnLi);
-    }
-
-    // Event listeners for the generated option buttons
-    document.querySelectorAll('.option-button').forEach(button => {
-      button.addEventListener('click', (event) => {
-        const optionIndex = parseInt(event.target.dataset.index, 10);
-        const chosenOption = scene.options[optionIndex];
-
-        const selectedOptionText = chosenOption.text;
-        const isRisky = chosenOption.isRisky || false;
-        const stateDelta = chosenOption.stateDelta || {};
-
-        if (isRisky) {
-          handleRiskyChoice(selectedOptionText, stateDelta, scene.story, scene.imagePrompt);
-        } else {
-          advanceToNextScene(selectedOptionText, stateDelta, scene.story, scene.imagePrompt);
-        }
-      });
-    });
-
-    // Event listener for the custom text input
-    const customInput = document.getElementById('custom-option-input');
-    const customSubmit = document.getElementById('custom-option-submit');
-    if (customSubmit && customInput) {
-      customSubmit.addEventListener('click', () => {
-        const customChoice = customInput.value;
-        if (customChoice.trim() !== '') {
-          // Custom inputs have no pre-defined state delta.
-          advanceToNextScene(customChoice, {}, scene.story, scene.imagePrompt);
-        }
-      });
-    }
-  }, 0);
+  attachOptionListeners(scene);
 }
 
 function advanceTurn() {
@@ -631,7 +698,9 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
     const sceneOrRiddle = await generateScene(gameState, { isRiddleTurn });
     gameState.sceneIndex++; // Move to the next scene in the plot
 
-    if (sceneOrRiddle.acertijo) {
+    if (sceneOrRiddle.intro_scenes) {
+        renderIntroTrailer(sceneOrRiddle);
+    } else if (sceneOrRiddle.acertijo) {
         renderRiddle(sceneOrRiddle);
     } else {
         renderScene(sceneOrRiddle);
