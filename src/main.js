@@ -262,8 +262,16 @@ function startTimer(durationInMinutes = 0) {
     if (timerInterval) clearInterval(timerInterval);
 
     if (durationInMinutes > 0) {
-        // Countdown
-        let totalSeconds = durationInMinutes * 60;
+        let totalSeconds;
+        if (gameState.remainingTime && gameState.remainingTime < durationInMinutes * 60) {
+            totalSeconds = gameState.remainingTime;
+            if (totalSeconds <= 0) {
+                alert("Time has run out! The timer will be restarted.");
+                totalSeconds = durationInMinutes * 60;
+            }
+        } else {
+            totalSeconds = durationInMinutes * 60;
+        }
 
         const updateCountdown = () => {
             if (totalSeconds < 0) {
@@ -274,6 +282,7 @@ function startTimer(durationInMinutes = 0) {
             const mins = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
             const secs = (totalSeconds % 60).toString().padStart(2, '0');
             timerElement.textContent = `${mins}:${secs}`;
+            gameState.remainingTime = totalSeconds;
             totalSeconds--;
         };
 
@@ -725,7 +734,8 @@ async function handleNewStory(lang) {
                 flags: {},
                 worldState: {},
                 lastChoice: null,
-                usedRiddles: []
+                usedRiddles: [],
+                timeLimit: parseInt(timeLimit, 10)
             };
 
             // 3. Create the story in the database
@@ -763,7 +773,7 @@ async function handleLoadStory(lang) {
       titleSpan.onclick = async () => {
         const fullStory = await getStory(story.id);
         if (fullStory && fullStory.gameState) {
-            startGame(fullStory.id, fullStory.gameState);
+            startGame(fullStory.id, fullStory.gameState, fullStory.gameState.timeLimit);
         } else {
             renderError(`Could not load story "${story.title}". It might be corrupted.`);
         }
