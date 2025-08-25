@@ -39,6 +39,24 @@ function renderError(message) {
     }
 }
 
+function speak(text, lang) {
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel(); // Cancel any previous speech
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang;
+    // Optional: find a specific voice
+    const voices = window.speechSynthesis.getVoices();
+    const voice = voices.find(v => v.lang === lang);
+    if (voice) {
+        utterance.voice = voice;
+    }
+    window.speechSynthesis.speak(utterance);
+  } else {
+    console.error("Speech Synthesis not supported by this browser.");
+    alert("Sorry, your browser does not support text-to-speech.");
+  }
+}
+
 // --- Global Game State ---
 let gameState = {};
 let timerInterval;
@@ -246,6 +264,24 @@ async function generatePDF() {
             }
 
             y += 10; // Spacing
+        }
+
+        // Add Final Inventory
+        if (story.gameState && story.gameState.inventory && Object.keys(story.gameState.inventory).length > 0) {
+            addPageIfNeeded();
+            y += 10;
+            doc.setFont(undefined, 'bold');
+            doc.text("Final Inventory", margin, y);
+            y += 10;
+            doc.setFont(undefined, 'normal');
+
+            for (const [item, quantity] of Object.entries(story.gameState.inventory)) {
+                addPageIfNeeded();
+                const itemText = `${item}: ${quantity}`;
+                const itemLines = doc.splitTextToSize(itemText, 180);
+                doc.text(itemLines, margin, y);
+                y += (itemLines.length * 7) + 5;
+            }
         }
 
         doc.save(`${storyTitle.replace(/\s+/g, '_')}.pdf`);
@@ -654,12 +690,20 @@ function renderScene(scene) {
                 <button id="custom-option-submit">Submit</button>
             </div>
         </div>
-        <p id="story-text"></p>
+        <div class="story-wrapper">
+            <p id="story-text"></p>
+            <button id="tts-btn" title="Read story aloud">🔊</button>
+        </div>
     </div>
   `;
 
   const storyElement = document.getElementById('story-text');
   const optionsContainer = document.getElementById('options-container');
+  const ttsButton = document.getElementById('tts-btn');
+
+  if (ttsButton) {
+      ttsButton.onclick = () => speak(scene.story, gameState.lang);
+  }
 
   if (storyElement && optionsContainer) {
     typewriter(storyElement, scene.story, 50, () => {
@@ -764,8 +808,19 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
 
   try {
     console.log("Trying to generate next scene...");
-    // Check for special riddle turn
-    const isRiddleTurn = gameState.round > 0 && (gameState.round % 3 === 0) && gameState.turn === 0;
+    // Handle riddle timing
+    let isRiddleTurn = false;
+    if (gameState.turnsUntilRiddle !== undefined) {
+        gameState.turnsUntilRiddle--;
+        if (gameState.turnsUntilRiddle <= 0) {
+            isRiddleTurn = true;
+            gameState.turnsUntilRiddle = gameState.players.length * 2; // Reset
+        }
+    } else if (gameState.round > 0 && (gameState.round % 3 === 0) && gameState.turn === 0) {
+        // Fallback for old saves
+        isRiddleTurn = true;
+    }
+
     if (isRiddleTurn) {
         console.log("--- Generating a special riddle! ---");
     }
@@ -777,7 +832,11 @@ async function advanceToNextScene(choice, stateDelta, storyText = '', imagePromp
     if (sceneOrRiddle.intro_scenes) {
         // This is a special, one-time event that contains the intro trailer data.
         // We need to save this data so we can use it for the PDF export later.
-        await updateStory(currentStoryId, { introData: sceneOrRiddle });
+        gameState.introShown = true;
+        await updateStory(currentStoryId, {
+            introData: sceneOrRiddle,
+            gameState: gameState
+        });
 
         renderIntroTrailer(sceneOrRiddle);
 
@@ -932,7 +991,9 @@ async function handleNewStory(lang) {
                 worldState: {},
                 lastChoice: null,
                 usedRiddles: [],
-                timeLimit: parseInt(timeLimit, 10)
+                timeLimit: parseInt(timeLimit, 10),
+                introShown: false,
+                turnsUntilRiddle: playerNames.length * 2
             };
 
             // 3. Create the story in the database

@@ -262,7 +262,7 @@ const getPrompt = (input, summary, options = {}) => {
   }
 
   // For the very first scene, use a special introductory prompt.
-  if (input.sceneIndex === 0) {
+  if (input.sceneIndex === 0 && !input.introShown) {
       return getFirstScenePrompt(input);
   }
 
@@ -276,11 +276,12 @@ The content must be family-friendly.
 
 **Core Directives:**
 1.  **React to the Last Action:** The user's last action was: "${input.lastChoice}". The "story" you generate next MUST be a direct and logical consequence of this action. This is the most important rule.
-2.  **Be Direct and Action-Oriented:** Focus on creating immediate challenges. Introduce enemies, obstacles, and conflicts frequently. The narrative should be concise and to the point, avoiding lengthy descriptions.
+2.  **Be Direct and Action-Oriented:** Focus on creating immediate challenges. Introduce enemies, obstacles, and conflicts frequently. The narrative must be very concise and to the point, avoiding lengthy descriptions and flowery language. **Limit the 'story' text to a maximum of 80 words.**
 3.  **Introduce Puzzles and Riddles:** Regularly include logical puzzles, riddles, or environmental challenges. When creating a puzzle, ensure some of the provided \`options\` are incorrect attempts at solving it. These incorrect options should result in a negative \`stateDelta\`, such as \`{"health": -10}\`, to represent a penalty.
 4.  **Maintain Consistency:**
     -   **Characters:** Any characters introduced must remain consistent in their appearance, personality, and name.
     -   **Visuals:** Image prompts must maintain a style that is consistent with the story's theme and title.
+5.  **Introduce NPCs with Rewards:** Sometimes, introduce a friendly or neutral non-player character (NPC) who might offer the players a gift. This gift could be a rare, single-use relic. When this happens, add the relic to the shared inventory via the \`stateDelta\`. For example: \`{"inventory": {"Sunstone of Clarity (Solves one riddle automatically)": 1}}\`.
 
 **Story So Far (Summary):**
 ${summary}
